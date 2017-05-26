@@ -57,7 +57,6 @@ tags
 CATKIN_IGNORE
 
 CMakeCache.txt
-CMakeLists.txt
 CMakeFiles
 Makefile
 cmake_install.cmake
