@@ -92,7 +92,7 @@ class imu_handler
     // magnetometer, p8: https://www.pololu.com/file/0J1089/LIS3MDL.pdf
     static const double linacc_cf = 0.061, 
           angvel_cf = 4.35 * 3.14159265359 / 180,
-          magfel_cf = 1 / (10000 * 6842);
+          magfel_cf = 1. / (10000 * 6842);
     
   public:
     sensor_msgs::Imu imu_msg;
