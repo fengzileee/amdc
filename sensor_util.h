@@ -4,7 +4,10 @@
 #include "ros/ros.h"
 #include "ros/console.h"
 #include "sensor_msgs/Range.h"
+#include "sensor_msgs/Imu.h"
+#include "sensor_msgs/MagneticField.h"
 #include "std_msgs/Int16.h"
+#include "geometry_msgs/Vector3.h"
 #include <sstream>
 
 const struct
@@ -73,6 +76,80 @@ void ultrasonic_handler::callback(const std_msgs::Int16::ConstPtr& msg)
     range_msg.header.stamp = ros::Time::now();
     range_msg.range = distance;
     pub.publish(range_msg);
+}
+
+// topic name:  "imu_data"    "mag_data" 
+// frame id:    "imu_frame"   "mag_frame"
+class imu_handler
+{
+  private:
+    ros::Subscriber sub;
+    ros::Publisher pub_imu, pub_mag;
+    // conversion factor
+    // 0.061, 4.35, 6842 are the default factors given in the data sheet
+    // imu, p15: https://www.pololu.com/file/0J1087/LSM6DS33.pdf
+    // magnetometer, p8: https://www.pololu.com/file/0J1089/LIS3MDL.pdf
+    double linacc_cf = 0.061, 
+          angvel_cf = 4.35 * 3.14159265359 / 180,
+          magfel_cf = 1 / (10000 * 6842);
+    
+  public:
+    sensor_msgs::Imu imu_msg;
+    sensor_msgs::MagneticField mag_msg; 
+
+    imu_handler()
+    {
+      imu_msg.orientation_covariance = 
+        [ 0, 0, 0, 
+          0, 0, 0, 
+          0, 0, 0];
+      mag_msg.magnetic_field_covariance = 
+        [ 0, 0, 0, 
+          0, 0, 0, 
+          0, 0, 0];
+    }
+
+    void callback(const std_msgs::Int16MultiArray::ConstPtr&);
+
+    void advertise(ros::NodeHandle nh)
+    {
+      pub_imu = nh.advertise<sensor_msgs::Imu>("imu_data", 1000);
+      imu_msg.header.frame_id = "imu_frame";
+
+      pub_mag = nh.advertise<sensor_msgs::MagneticField>("mag_data",1000);
+      mag_msg.header.frame_id = "mag_frame";
+    }
+
+    void subscribe(ros::NodeHandle nh)
+    {
+      sub = nh.subscribe('im', 1000, &imu_handler::callback, this);
+    }
+}
+
+void callback(const std_msgs::Int16MultiArray::ConstPtr& msg)
+{
+  imu_msg.linear_acceleration.x = msg -> data[0] * linacc_cf;
+  imu_msg.linear_acceleration.y = msg -> data[1] * linacc_cf;
+  imu_msg.linear_acceleration.z = msg -> data[2] * linacc_cf;
+  imu_msg.angular_velocity.x = msg -> data[3] * angvel_cf;
+  imu_msg.angular_velocity.y = msg -> data[4] * angvel_cf;
+  imu_msg.angular_velocity.z = msg -> data[5] * angvel_cf;
+  mag_msg.magnetic_field.x = msg -> data[6] * magfel_cf;
+  mag_msg.magnetic_field.y = msg -> data[7] * magfel_cf;
+  mag_msg.magnetic_field.z = msg -> data[8] * magfel_cf;
+
+  ROS_DEBUG_STREAM("imu,  linear acceleration (m/s2): " 
+      << imu_msg.linear_acceleration);
+  ROS_DEBUG_STREAM("imu, angular velocities (rad/s): " 
+      << imu_msg.angular_velocity); 
+  ROS_DEBUG_STREAM("magnetometer, field (Tesla): " 
+      << mag_msg.magnetic_field);
+
+  imu_msg.header.stamp = ros::Time::now();
+  pub_imu.publish(imu_msg); 
+
+  mag_msg.header.stamp = ros::Time::now();
+  pub_mag.publish(mag_msg);
 }
 
 #endif
