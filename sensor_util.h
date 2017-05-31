@@ -101,13 +101,13 @@ class imu_handler
     imu_handler()
     {
       imu_msg.orientation_covariance = 
-        [ 0, 0, 0, 
+        { 0, 0, 0, 
           0, 0, 0, 
-          0, 0, 0];
+          0, 0, 0};
       mag_msg.magnetic_field_covariance = 
-        [ 0, 0, 0, 
+        { 0, 0, 0, 
           0, 0, 0, 
-          0, 0, 0];
+          0, 0, 0};
     }
 
     void callback(const std_msgs::Int16MultiArray::ConstPtr&);
