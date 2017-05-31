@@ -4,6 +4,7 @@
 
 // sensors
 ultrasonic_handler ultrasonic[7];
+imu_handler imu;
 
 void init_ultrasonic(ros::NodeHandle nh)
 {
@@ -18,6 +19,8 @@ void init_imu(ros::NodeHandle nh)
 {
     // TODO
     // add subscriber here
+    imu.subscribe(nh);
+    imu.advertise(nh);
 }
 
 void init_gps(ros::NodeHandle nh)
