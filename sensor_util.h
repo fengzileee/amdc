@@ -7,6 +7,7 @@
 #include "sensor_msgs/Imu.h"
 #include "sensor_msgs/MagneticField.h"
 #include "std_msgs/Int16.h"
+#include "std_msgs/Int16MultiArray.h"
 #include "geometry_msgs/Vector3.h"
 #include <sstream>
 
@@ -89,7 +90,7 @@ class imu_handler
     // 0.061, 4.35, 6842 are the default factors given in the data sheet
     // imu, p15: https://www.pololu.com/file/0J1087/LSM6DS33.pdf
     // magnetometer, p8: https://www.pololu.com/file/0J1089/LIS3MDL.pdf
-    double linacc_cf = 0.061, 
+    static const double linacc_cf = 0.061, 
           angvel_cf = 4.35 * 3.14159265359 / 180,
           magfel_cf = 1 / (10000 * 6842);
     
@@ -124,9 +125,9 @@ class imu_handler
     {
       sub = nh.subscribe("im", 1000, &imu_handler::callback, this);
     }
-}
+};
 
-void callback(const std_msgs::Int16MultiArray::ConstPtr& msg)
+void imu_handler::callback(const std_msgs::Int16MultiArray::ConstPtr& msg)
 {
   imu_msg.linear_acceleration.x = msg -> data[0] * linacc_cf;
   imu_msg.linear_acceleration.y = msg -> data[1] * linacc_cf;
