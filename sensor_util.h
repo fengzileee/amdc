@@ -122,7 +122,7 @@ class imu_handler
 
     void subscribe(ros::NodeHandle nh)
     {
-      sub = nh.subscribe('im', 1000, &imu_handler::callback, this);
+      sub = nh.subscribe("im", 1000, &imu_handler::callback, this);
     }
 }
 
