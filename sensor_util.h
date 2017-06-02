@@ -8,6 +8,7 @@
 #include "sensor_msgs/MagneticField.h"
 #include "std_msgs/Int16.h"
 #include "std_msgs/Int16MultiArray.h"
+#include "std_msgs/Float32MultiArray.h"
 #include "geometry_msgs/Vector3.h"
 #include <sstream>
 
