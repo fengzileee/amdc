@@ -153,4 +153,51 @@ void imu_handler::callback(const std_msgs::Int16MultiArray::ConstPtr& msg)
   pub_mag.publish(mag_msg);
 }
 
+class gps_handler
+{
+  private:
+    ros::Subscriber sub;
+    ros::Publisher pub; 
+    sensor_msgs::NavSatFix gps_msg;
+
+  public:
+
+    gps_handler()
+    {
+      gps_msg.position_covariance_type = 0; // covariance unkonwn
+    }
+
+    void callback(const std_msgs::Float32MultiArray::ConstPtr&); 
+
+    void advertise(ros::NodeHandle nh)
+    {
+      pub = nh.advertise("gps_data", 1000);
+      gps_msg.header.frame_id = "gps_frame";
+    }
+
+    void subscribe(ros::NodeHandle nh)
+    {
+      sub = nh.subscribe("gp", 1000, &gps_handler::callback, this);
+    }
+};
+
+void gps_handler::callback(const std_msgs::Float32MultiArray::ConstPtr& msg)
+{
+  gps_msg.latitude = msg -> data[0]; 
+  gps_msg.longtitude = msg -> data[1];
+  gps_msg.altitude =  msg -> data[2];
+  gps_msg.status.status = msg -> data[3];
+  gps_msg.status.service = msg -> data[4];
+
+  ROS_DEBUG_STREAM("gps (lat[deg], long[deg], alt[m]), status, service: " 
+      << gps_msg.latitude << ", " 
+      << gps_msg.longtitude << ", "
+      << gps_msg.altitude << ", " 
+      << gps_msg.status.status << ", "
+      << gps_msg.status.service);
+
+  gps_msg.header.stamp = ros::Time::now();
+  pub.publish(gps_msg);
+}
+
 #endif
