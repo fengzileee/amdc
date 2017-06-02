@@ -183,8 +183,8 @@ class gps_handler
 
 void gps_handler::callback(const std_msgs::Float32MultiArray::ConstPtr& msg)
 {
-  gps_msg.latitude = msg -> data[0]; 
-  gps_msg.longitude = msg -> data[1];
+  gps_msg.latitude = msg -> data[0] / 10000000.; 
+  gps_msg.longitude = msg -> data[1] / 10000000.;
   gps_msg.altitude =  msg -> data[2];
   gps_msg.status.status = msg -> data[3];
   gps_msg.status.service = msg -> data[4];
