@@ -226,7 +226,7 @@ VectorXf nav_controller(VectorXf& state,
     if (run_away_check)
         u = controller_oa(state, sensor_angles);
     else if (boundary_following_check)
-        u = controller_oa(state, point_sensor_readings);
+        u = controller_div(state, point_sensor_readings);
     else 
     {
         VectorXf local_v = global2local_v(state); 
