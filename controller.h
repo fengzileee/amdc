@@ -1,7 +1,7 @@
 #ifndef controller_H
 #define controller_H
 
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 #include <cmath>
 #include <iostream>
 
