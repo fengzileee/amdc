@@ -204,7 +204,7 @@ VectorXf controller_div(VectorXf state,
 VectorXf nav_controller(VectorXf& state, 
         VectorXf& ref, VectorXf point_sensor_readings)
 {
-    VectorXf sensor_angles(sensor_num);
+    static VectorXf sensor_angles(sensor_num);
     float* sensor_angles_array = sensor_angles.data();
     static const float k_p_turn = 0.5, 
                  k_d_turn = 0.5, 
