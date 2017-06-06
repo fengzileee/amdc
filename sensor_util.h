@@ -8,6 +8,7 @@
 #include "sensor_msgs/MagneticField.h"
 #include "std_msgs/Int16.h"
 #include "std_msgs/Int16MultiArray.h"
+#include "std_msgs/Int32MultiArray.h"
 #include "std_msgs/Float32MultiArray.h"
 #include "geometry_msgs/Vector3.h"
 #include <sstream>
@@ -182,7 +183,7 @@ class gps_handler
     }
 };
 
-void gps_handler::callback(const std_msgs::Float32MultiArray::ConstPtr& msg)
+void gps_handler::callback(const std_msgs::Int32MultiArray::ConstPtr& msg)
 {
   gps_msg.latitude = msg -> data[0] / 10000000.; 
   gps_msg.longitude = msg -> data[1] / 10000000.;
