@@ -6,6 +6,7 @@
 #include "sensor_msgs/Range.h"
 #include "sensor_msgs/Imu.h"
 #include "sensor_msgs/MagneticField.h"
+#include "sensor_msgs/NavSatFix.h"
 #include "std_msgs/Int16.h"
 #include "std_msgs/Int16MultiArray.h"
 #include "std_msgs/Int32MultiArray.h"
@@ -169,11 +170,11 @@ class gps_handler
       gps_msg.position_covariance_type = 0; // covariance unkonwn
     }
 
-    void callback(const std_msgs::Float32MultiArray::ConstPtr&); 
+    void callback(const std_msgs::Int32MultiArray::ConstPtr&); 
 
     void advertise(ros::NodeHandle nh)
     {
-      pub = nh.advertise("gps_data", 1000);
+      pub = nh.advertise<sensor_msgs::NavSatFix>("gps_data", 1000);
       gps_msg.header.frame_id = "gps_frame";
     }
 
