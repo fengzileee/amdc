@@ -217,6 +217,8 @@ VectorXf nav_controller(VectorXf& state,
         .select(0, point_sensor_readings);
 
     // check the state (move, diversion, or run-away)
+    // TODO 
+    // put this before the cap
     float min_point_sensor_reading = point_sensor_readings.minCoeff(); 
     bool boundary_following_check, run_away_check, stay_at_goal_check;
     run_away_check = min_point_sensor_reading < RUN_AWAY_THRESH;
