@@ -106,6 +106,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    // set up CNN
     net = parse_network_cfg(argv[1]);
     load_weights(&net, argv[2]);
     set_batch_network(&net, 1);
@@ -116,18 +117,20 @@ int main(int argc, char **argv)
     namedWindow("predictions",1);
     while (1)
     {
-        Mat frame, original;
+        Mat capture, original, frame;
 
-        if (!cap.read(frame))
+        if (!cap.read(capture))
             exit(0);
+
+        resize(capture, frame, Size(498, 280), 0, 0, CV_INTER_AREA);
 
         original = frame.clone();
         raw_bbox.clear();
         merged_bbox.clear();
 
-        for (int x = 0; x < 19; ++x)
+        for (int x = 0; x < 27; ++x)
         {
-            for (int y = 0; y < 19; ++y)
+            for (int y = 0; y < 14; ++y)
             {
                 Rect grid_rect(x*14, y*14, 28, 28);
                 Mat grid = original(grid_rect);
