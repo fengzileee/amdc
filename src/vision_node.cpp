@@ -1,4 +1,4 @@
-//#include <opencv2/opencv.hpp>
+#include <opencv2/opencv.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -15,6 +15,30 @@ using namespace cv;
 const Scalar green_colour(0, 255, 0);
 
 network net;
+
+void merge_bounding_boxes(vector<Rect>& out, const vector<Rect>& in)
+{
+    Rect merged;
+    if (in.size() == 0)
+        return;
+
+    merged = in[0];
+    for (auto bbox : in)
+    {
+        Rect intersection = bbox & merged;
+        if (intersection.area() > 0)
+        {
+            merged = bbox | merged;
+        }
+        else
+        {
+            out.push_back(merged);
+            merged = bbox;
+        }
+    }
+
+    out.push_back(merged);
+}
 
 // code adapted from darknet
 image Mat_to_image(const Mat &mat)
@@ -87,6 +111,8 @@ int main(int argc, char **argv)
     set_batch_network(&net, 1);
     srand(2222222);
 
+    vector<Rect> raw_bbox, merged_bbox;
+
     namedWindow("predictions",1);
     while (1)
     {
@@ -96,6 +122,8 @@ int main(int argc, char **argv)
             exit(0);
 
         original = frame.clone();
+        raw_bbox.clear();
+        merged_bbox.clear();
 
         for (int x = 0; x < 19; ++x)
         {
@@ -103,17 +131,22 @@ int main(int argc, char **argv)
             {
                 Rect grid_rect(x*14, y*14, 28, 28);
                 Mat grid = original(grid_rect);
-                //int p = predict_classifier(argv[1], argv[2], grid);
                 int p = predict_classifier(grid);
                 if (p == 0) // debris found
                 {
-                    rectangle(frame, grid_rect, green_colour, 3);
+                    raw_bbox.push_back(grid_rect);
                 }
             }
         }
 
+        merge_bounding_boxes(merged_bbox, raw_bbox);
+        for (auto bbox : merged_bbox)
+        {
+            rectangle(frame, bbox, green_colour, 3);
+        }
+
         imshow("predictions", frame);
-        if(waitKey(30) == 27)
+        if(waitKey(1) == 27)
             exit(0);
     }
 
