@@ -200,10 +200,13 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
-include_directories(include ${catkin_INCLUDE_DIRS})
+
+include_directories(include)
+link_directories(lib)
+find_package (Threads REQUIRED)
 
 add_executable(amdc src/amdc.cpp)
 add_executable(vision_node src/vision_node.cpp)
 
 target_link_libraries(amdc ${catkin_LIBRARIES})
-target_link_libraries(vision_node ${OpenCV_LIBS})
+target_link_libraries(vision_node ${OpenCV_LIBS} Threads::Threads libdarknet.a)
