@@ -11,6 +11,22 @@ using namespace std;
 
 enum state { HEADER1, HEADER2, SIZE, DATA };
 
+void handle_gps(void *buffer)
+{
+    int *buf = (int *)buffer;
+    int lat = buf[0];
+    int lng = buf[1];
+    int alt = buf[2];
+    int status = buf[3];
+    int service = buf[4];
+    cout << "gps\n";
+    cout << "lat: " << lat << endl;
+    cout << "lng: " << lng << endl;
+    cout << "alt: " << alt << endl;
+    cout << "status: " << status << endl;
+    cout << "service: " << service << endl;
+}
+
 void handle_imu_mag(void *buffer)
 {
     short *buf = (short *)buffer;
@@ -130,7 +146,9 @@ void get_serial_data()
                 cerr << "Received size 0 data.\n";
                 sm = HEADER1;
             }
-            else if (msg_sz != 3 && msg_sz != 19)
+            else if (msg_sz != 3   // ultrasonic
+                  && msg_sz != 19  // imu+mag
+                  && msg_sz != 21) // gps
             {
                 cerr << "Unknown message size: " << msg_sz << endl;
                 sm = HEADER1;
@@ -177,6 +195,10 @@ void get_serial_data()
             else if (msg_sz == 19)
             {
                 handle_imu_mag(data_buf);
+            }
+            else if (msg_sz == 21)
+            {
+                handle_gps(data_buf);
             }
             else
             {
