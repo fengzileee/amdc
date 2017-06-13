@@ -8,7 +8,7 @@ extern "C"
 
 using namespace std;
 
-char data_buf[80];
+unsigned char data_buf[80];
 int msg_sz;
 
 void handle_imu_mag()
@@ -31,10 +31,20 @@ void handle_imu_mag()
 
 void handle_ultrasonic()
 {
-    unsigned char *buf = (unsigned char *)data_buf;
-    int addr = buf[0];
-    int distance = buf[1];
+    int addr = data_buf[0];
+    int distance = data_buf[1];
     cout << "ultrasonic " << addr << ": " << distance << endl;
+}
+
+int checksum()
+{
+    int lrc = msg_sz;
+
+    for (int i = 0; i < msg_sz - 1; ++i)
+        lrc += data_buf[i];
+
+    lrc = -lrc & 0xff;
+    return lrc;
 }
 
 int main(int argc, char **argv)
@@ -42,7 +52,6 @@ int main(int argc, char **argv)
     enum state { HEADER1, HEADER2, SIZE, DATA };
     enum state sm = HEADER1;
     unsigned char buf;
-    char *msg;
     int bytes_recv;
     int sum_of_bytes = 0;
 
@@ -51,7 +60,7 @@ int main(int argc, char **argv)
         cerr << "Usage: " << argv[0] << " serial_port" << endl;
     }
 
-    begin_serial(argv[1], 5);
+    begin_serial(argv[1], 5); // timeout of 5s
 
     while (1)
     {
@@ -139,8 +148,6 @@ int main(int argc, char **argv)
 
         case DATA:
 
-            // TODO
-            // checksum
             // XXX
             //cerr << "in data\n";
             bytes_recv = serial_read(data_buf + sum_of_bytes, msg_sz - sum_of_bytes);
@@ -159,7 +166,14 @@ int main(int argc, char **argv)
             }
             else
             {
-                if (msg_sz == 3)
+                int expected_lrc = checksum();
+                int received_lrc = data_buf[msg_sz - 1];
+
+                if (expected_lrc != received_lrc)
+                {
+                    cerr << "Bad checksum: " << received_lrc << endl;
+                }
+                else if (msg_sz == 3)
                 {
                     handle_ultrasonic();
                 }
