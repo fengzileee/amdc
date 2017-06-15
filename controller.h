@@ -136,8 +136,6 @@ VectorXf controller_div(VectorXf state,
     static const float k_p_turn = 0.25, 
                  k_d_turn = 0.25,
                  k_lateral_p = 4, 
-                 side_activate_thresh = 0.1;
-
 
     VectorXf detectionX, detectionY, local_v; 
     detectionX = point_sensor_readings.array() * sensor_angles.array().cos();
@@ -156,6 +154,7 @@ VectorXf controller_div(VectorXf state,
     float obs_ahead_angle = std::atan2(obs_ahead_y, obs_ahead_x);
 
     // obstacles aside 
+    /*
     VectorXf scale_side = sensor_angles.array().sin();
     float obs_side_x = (detectionX.array() * scale_side.array()).sum();
     float obs_side_y = (detectionY.array() * scale_side.array()).sum();
@@ -163,6 +162,7 @@ VectorXf controller_div(VectorXf state,
     obs_side << obs_side_x, obs_side_y;
     float obs_side_angle = std::atan2(obs_side_y, obs_side_y);
     float obs_side_norm = obs_side.norm();
+    */
 
     // overall obstacle
     VectorXf obstacle_all(2), obstacle_all_unit(2);
@@ -173,12 +173,13 @@ VectorXf controller_div(VectorXf state,
     // decide the control input
     if (obs_ahead_unit.dot(obstacle_all_unit) > 0.86)
     {
-        if (obs_side_norm < side_activate_thresh)
-        {
+        // if (obs_side_norm < side_activate_thresh)
+        // {
             if (obs_ahead_angle > 0)
                 heading_err = obs_ahead_angle - PI / 2;
             else
                 heading_err = obs_ahead_angle + PI / 2;
+        /*
         }
         else
         {
@@ -187,11 +188,11 @@ VectorXf controller_div(VectorXf state,
             else
                 heading_err = obs_ahead_angle + PI / 2;
         }
+        */
     }
     else
         heading_err = - obs_ahead_angle;
 
-    //std::cout << heading_err << " "  << std::endl;
     heading_err = heading_err - k_lateral_p * v_lateral; 
     heading_err = atan2_angle(heading_err); 
     float dheading_err = state(5); 
