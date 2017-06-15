@@ -213,17 +213,15 @@ VectorXf nav_controller(VectorXf& state,
     VectorXf u;
     VectorXf x = state.head(2);
     VectorXf goal_vector = ref - x;
-    point_sensor_readings = (point_sensor_readings.array() > sensor_cap)
-        .select(0, point_sensor_readings);
 
-    // check the state (move, diversion, or run-away)
-    // TODO 
-    // put this before the cap
     float min_point_sensor_reading = point_sensor_readings.minCoeff(); 
     bool boundary_following_check, run_away_check, stay_at_goal_check;
     run_away_check = min_point_sensor_reading < RUN_AWAY_THRESH;
     boundary_following_check = min_point_sensor_reading < BOUNDARY_FOLLOWING_THRESH; 
     stay_at_goal_check = goal_vector.norm() < ARRIVE_RANGE;
+
+    point_sensor_readings = (point_sensor_readings.array() > sensor_cap)
+        .select(0, point_sensor_readings);
 
     if (run_away_check)
         u = controller_oa(state, sensor_angles);
