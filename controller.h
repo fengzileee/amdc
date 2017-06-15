@@ -19,13 +19,14 @@ static const float ARRIVE_RANGE = 0.25,
              CLOSE_DIST = 1., // when to slow down
              DIV_SPEED = 0.1, 
              OA_SPEED = 0.2,
-             NAV_SPEED = 0.2;
+             NAV_SPEED = 0.2,
+             U_LIMIT = 1;
 
 static const float sensor_angles_array[7] = {-2.2, -1.2, -0.5, 0., 0.5, 1.2, 2.2};
 
 static const VectorXf sensor_angles(7); 
 static const int sensor_num = sensor_angles.size();
-static const float sensor_cap = 1;
+static const float sensor_cap = 0.9;
 
 static const struct
 {
@@ -71,7 +72,7 @@ VectorXf controller_vw2u(const VectorXf& state,
         const float omega_d)
 {
     static float conv_rate_linear = 1.2;
-    static float conv_rate_angular = 10;
+    static float conv_rate_angular = 4;
 
     float v_actual = std::cos(state(2)) * state(3) 
         + std::sin(state(2)) * state(4);
@@ -91,8 +92,8 @@ VectorXf controller_oa(VectorXf& state,
         VectorXf& point_sensor_readings)
 {
     // gains of this controller
-    static const float k_p_turn = 0.1,
-                 k_d_turn = 0.1; 
+    static const float k_p_turn = 0.5,
+                 k_d_turn = 0.5; 
 
     VectorXf detectionX, detectionY, local_v; 
     detectionX = point_sensor_readings.array() * sensor_angles.array().cos();
