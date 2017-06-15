@@ -112,14 +112,14 @@ VectorXf controller_oa(VectorXf& state,
     heading_err_inv = atan2_angle(heading_err_inv); 
 
     float v_d, omega_d;
-    if (std::cos(heading_err) < 0) 
+    if (std::cos(heading_err) > 0) 
     {
-        v_d = OA_SPEED;
+        v_d = -OA_SPEED;
         omega_d = k_p_turn * heading_err + k_d_turn * dheading_err;
     }
     else
     {
-        v_d = -OA_SPEED;
+        v_d = OA_SPEED;
         omega_d = k_p_turn * heading_err_inv + k_d_turn * dheading_err;
     }
 
