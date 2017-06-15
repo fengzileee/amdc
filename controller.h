@@ -67,6 +67,15 @@ static VectorXf global2local_v(const VectorXf& state)
     return local_v;
 }
 
+void control_input_cap(VectorXf& u)
+{
+    u(0) = u(0) > U_LIMIT ? U_LIMIT : 
+        (u(0) < - U_LIMIT ? -U_LIMIT : u(0));
+    u(1) = u(1) > U_LIMIT ? U_LIMIT : 
+        (u(1) < - U_LIMIT ? -U_LIMIT : u(1));
+}
+
+
 VectorXf controller_vw2u(const VectorXf& state, 
         const float v_d, 
         const float omega_d)
@@ -85,6 +94,8 @@ VectorXf controller_vw2u(const VectorXf& state,
     VectorXf u(2); 
     u << 0.5 * (sum_u + diff_u), 
       0.5 * (sum_u - diff_u);
+
+    control_input_cap(u);
     return u;
 }
 
@@ -136,7 +147,7 @@ VectorXf controller_div(VectorXf state,
     // gains of this controller, and controller parameters
     static const float k_p_turn = 0.25, 
                  k_d_turn = 0.25,
-                 k_lateral_p = 4, 
+                 k_lateral_p = 4; 
 
     VectorXf detectionX, detectionY, local_v; 
     detectionX = point_sensor_readings.array() * sensor_angles.array().cos();
