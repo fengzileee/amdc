@@ -135,9 +135,6 @@ VectorXf controller_oa(VectorXf& state,
         omega_d = k_p_turn * heading_err_inv + k_d_turn * dheading_err;
     }
 
-    std::cout << "heading_err_inv " << heading_err_inv << std::endl;
-    std::cout << "dheading_err " << dheading_err << std::endl;
-
     return controller_vw2u(state, v_d, omega_d);
 }
 
