@@ -66,3 +66,4 @@ devel
 # controller test file
 controller_test
 controller_test.*
+simdata
