@@ -24,8 +24,8 @@ static const float ARRIVE_RANGE = 0.25,
 
 static const float sensor_angles_array[7] = {-2.2, -1.2, -0.5, 0., 0.5, 1.2, 2.2};
 
-static const VectorXf sensor_angles(7); 
-static const int sensor_num = sensor_angles.size();
+bool not_sensor_angle_init = 1;
+static const int sensor_num = 7;
 static const float sensor_cap = 0.9;
 
 static const struct
@@ -105,6 +105,15 @@ VectorXf controller_oa(VectorXf& state,
     // gains of this controller
     static const float k_p_turn = 0.5,
                  k_d_turn = 0.5; 
+    
+    static VectorXf sensor_angles(7); 
+    sensor_angles << sensor_angles_array[0], 
+                  sensor_angles_array[1],
+                  sensor_angles_array[2],
+                  sensor_angles_array[3],
+                  sensor_angles_array[4],
+                  sensor_angles_array[5],
+                  sensor_angles_array[6];
 
     VectorXf detectionX, detectionY, local_v; 
     detectionX = point_sensor_readings.array() * sensor_angles.array().cos();
@@ -139,12 +148,21 @@ VectorXf controller_oa(VectorXf& state,
 }
 
 VectorXf controller_div(VectorXf state, 
-        VectorXf& point_sensor_readings)
+        const VectorXf& point_sensor_readings)
 {
     // gains of this controller, and controller parameters
     static const float k_p_turn = 0.25, 
                  k_d_turn = 0.25,
                  k_lateral_p = 4; 
+
+    static VectorXf sensor_angles(7); 
+    sensor_angles << sensor_angles_array[0], 
+                  sensor_angles_array[1],
+                  sensor_angles_array[2],
+                  sensor_angles_array[3],
+                  sensor_angles_array[4],
+                  sensor_angles_array[5],
+                  sensor_angles_array[6];
 
     VectorXf detectionX, detectionY, local_v; 
     detectionX = point_sensor_readings.array() * sensor_angles.array().cos();
@@ -214,8 +232,14 @@ VectorXf controller_div(VectorXf state,
 VectorXf nav_controller(VectorXf& state, 
         VectorXf& ref, VectorXf point_sensor_readings)
 {
-    static VectorXf sensor_angles(sensor_num);
-    float* sensor_angles_array = sensor_angles.data();
+    static VectorXf sensor_angles(7); 
+    sensor_angles << sensor_angles_array[0], 
+                  sensor_angles_array[1],
+                  sensor_angles_array[2],
+                  sensor_angles_array[3],
+                  sensor_angles_array[4],
+                  sensor_angles_array[5],
+                  sensor_angles_array[6];
     static const float k_p_turn = 0.5, 
                  k_d_turn = 0.5, 
                  k_lateral_p = 4;
@@ -231,10 +255,10 @@ VectorXf nav_controller(VectorXf& state,
     stay_at_goal_check = goal_vector.norm() < ARRIVE_RANGE;
 
     point_sensor_readings = (point_sensor_readings.array() > sensor_cap)
-        .select(0, point_sensor_readings);
+        .select(0, sensor_cap - point_sensor_readings.array());
 
     if (run_away_check)
-        u = controller_oa(state, sensor_angles);
+        u = controller_oa(state, point_sensor_readings);
     else if (boundary_following_check)
         u = controller_div(state, point_sensor_readings);
     else 
@@ -247,7 +271,8 @@ VectorXf nav_controller(VectorXf& state,
         heading_err = heading_d - state(2) - k_lateral_p * v_lateral; 
         heading_err = atan2_angle(heading_err);
         float dheading_err = state(5); 
-        float v_d = goal_vector.norm() < CLOSE_DIST ? goal_vector.norm()/5 : NAV_SPEED;
+        float v_d = goal_vector.norm() < CLOSE_DIST ? 
+            NAV_SPEED * goal_vector.norm() / CLOSE_DIST : NAV_SPEED;
         float omega_d;
         if (stay_at_goal_check)
         {
