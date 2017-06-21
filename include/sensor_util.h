@@ -118,10 +118,10 @@ class imu_handler
     void advertise(ros::NodeHandle nh)
     {
       pub_imu = nh.advertise<sensor_msgs::Imu>("imu_data", 1000);
-      imu_msg.header.frame_id = "imu_frame";
+      imu_msg.header.frame_id = "odom";
 
       pub_mag = nh.advertise<sensor_msgs::MagneticField>("mag_data",1000);
-      mag_msg.header.frame_id = "mag_frame";
+      mag_msg.header.frame_id = "odom";
     }
 
     void subscribe(ros::NodeHandle nh)
@@ -175,7 +175,7 @@ class gps_handler
     void advertise(ros::NodeHandle nh)
     {
       pub = nh.advertise<sensor_msgs::NavSatFix>("gps_data", 1000);
-      gps_msg.header.frame_id = "gps_frame";
+      gps_msg.header.frame_id = "map";
     }
 
     void subscribe(ros::NodeHandle nh)
