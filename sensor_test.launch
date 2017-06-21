@@ -5,7 +5,8 @@
     args="record -o gps_data" />
     <node pkg="rosbag" type="rosbag" name="record_imu" 
     args="record -o imu_data mag_data" />
-    <node pkg="rosbag" type="rosbag" name="record_ultrasonics" />
+    <node pkg="rosbag" type="rosbag" name="record_ultrasonics"
+    args="record -o ultrasonic_btm_left ultrasonic_left ultrasonic_top_left ultrasonic_top ultrasoic_top_right ultrasonic_right ultrasonic_btm_right"/>
     <node pkg="rosbag" type="rosbag" name="rosbag_record_diag"
     args="record -o /tmp/hrp2-diag /diagnostics /rosout"/>   
 
