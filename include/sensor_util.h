@@ -135,7 +135,7 @@ class imu_handler
       imu_msg.header.frame_id = "imu_frame";
 
       pub_mag = nh.advertise<sensor_msgs::MagneticField>("mag_data",1000);
-      mag_msg.header.frame_id = "mag_frame";
+      mag_msg.header.frame_id = "imu_frame";
     }
 
     void subscribe(ros::NodeHandle nh)
@@ -217,7 +217,7 @@ class gps_handler
     void advertise(ros::NodeHandle nh)
     {
       pub = nh.advertise<sensor_msgs::NavSatFix>("gps_data", 1000);
-      gps_msg.header.frame_id = "gps_frame";
+      gps_msg.header.frame_id = "map";
     }
 
     void subscribe(ros::NodeHandle nh)
@@ -231,7 +231,7 @@ void gps_handler::callback(const std_msgs::Int32MultiArray::ConstPtr& msg)
 {
   gps_msg.latitude = msg -> data[0] / 10000000.; 
   gps_msg.longitude = msg -> data[1] / 10000000.;
-  gps_msg.altitude =  msg -> data[2];
+  gps_msg.altitude =  msg -> data[2] / 100.;
   gps_msg.status.status = msg -> data[3];
   gps_msg.status.service = msg -> data[4];
 

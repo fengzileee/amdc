@@ -67,3 +67,6 @@ devel
 controller_test
 controller_test.*
 simdata
+
+# transformation node
+src/frame_transformation.cpp
