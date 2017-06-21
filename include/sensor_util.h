@@ -88,6 +88,7 @@ void ultrasonic_handler::process_sensor_msg(void *buffer)
     unsigned char *buf = (unsigned char *)buffer;
     distance = buf[1];
     distance += buf[2] << 8;
+    distance /= 100.;
     ROS_DEBUG_STREAM("id " << id << ", distance (m): " << distance);
 
     // publish as Range msg for visualisation in rviz
