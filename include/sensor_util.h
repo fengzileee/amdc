@@ -40,6 +40,7 @@ class ultrasonic_handler
     public:
         // processed proximity value from sensor (in meters)
         float distance;
+        int error_code;
 
         ultrasonic_handler()
         {
@@ -47,6 +48,8 @@ class ultrasonic_handler
             range_msg.field_of_view = 0.2;
             range_msg.min_range = 0.03;
             range_msg.max_range = 6.00;
+            distance = 0;
+            error_code = 0;
         }
 
         void callback(const std_msgs::Int16::ConstPtr&);
@@ -88,8 +91,11 @@ void ultrasonic_handler::process_sensor_msg(void *buffer)
     unsigned char *buf = (unsigned char *)buffer;
     distance = buf[1];
     distance += buf[2] << 8;
+    error_code = buf[3];
     distance /= 100.;
-    ROS_DEBUG_STREAM("id " << id << ", distance (m): " << distance);
+    ROS_DEBUG_STREAM("id " << id << 
+                     ", dist: " << distance <<
+                     ", error_code: " << error_code);
 
     // publish as Range msg for visualisation in rviz
     range_msg.header.stamp = ros::Time::now();

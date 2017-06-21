@@ -128,7 +128,7 @@ void get_serial_data()
                 cerr << "Received size 0 data.\n";
                 sm = HEADER1;
             }
-            else if (msg_sz != 4   // ultrasonic
+            else if (msg_sz != 5   // ultrasonic
                   && msg_sz != 19  // imu+mag
                   && msg_sz != 21) // gps
             {
@@ -170,7 +170,7 @@ void get_serial_data()
             {
                 cerr << "Bad checksum: " << received_lrc << endl;
             }
-            else if (msg_sz == 4)
+            else if (msg_sz == 5)
             {
                 int addr = data_buf[0];
                 ultrasonic[addr - 2].process_sensor_msg(data_buf);
