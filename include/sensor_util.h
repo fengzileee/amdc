@@ -19,13 +19,13 @@ const struct
     const char *topic;
     const char *frame_id;
 } ultrasonic_info[] =
-{ {"ultrasonic_left",       "ultrasonic_left_frame"      },
+{ {"ultrasonic_btm_left",   "ultrasonic_btm_left_frame"  },
+  {"ultrasonic_left",       "ultrasonic_left_frame"      },
   {"ultrasonic_top_left",   "ultrasonic_top_left_frame"  },
+  {"ultrasonic_top",        "ultrasonic_top_frame"       },
   {"ultrasonic_top_right",  "ultrasonic_top_right_frame" },
   {"ultrasonic_right",      "ultrasonic_right_frame"     },
-  {"ultrasonic_btm_right",  "ultrasonic_btm_right_frame" },
-  {"ultrasonic_btm",        "ultrasonic_btm_frame"       },
-  {"ultrasonic_btm_left",   "ultrasonic_btm_left_frame"  } };
+  {"ultrasonic_btm_right",  "ultrasonic_btm_right_frame" } };
 
 // TODO
 // maybe create a base class?
@@ -69,11 +69,25 @@ class ultrasonic_handler
                                &ultrasonic_handler::callback,
                                this);
         }
+        void process_sensor_msg(void *buffer);
 };
 
 void ultrasonic_handler::callback(const std_msgs::Int16::ConstPtr& msg)
 {
     distance = (float) msg->data / 100;
+    ROS_DEBUG_STREAM("id " << id << ", distance (m): " << distance);
+
+    // publish as Range msg for visualisation in rviz
+    range_msg.header.stamp = ros::Time::now();
+    range_msg.range = distance;
+    pub.publish(range_msg);
+}
+
+void ultrasonic_handler::process_sensor_msg(void *buffer)
+{
+    unsigned char *buf = (unsigned char *)buffer;
+    distance = buf[1];
+    distance += buf[2] << 8;
     ROS_DEBUG_STREAM("id " << id << ", distance (m): " << distance);
 
     // publish as Range msg for visualisation in rviz
@@ -128,6 +142,7 @@ class imu_handler
     {
       sub = nh.subscribe("im", 1000, &imu_handler::callback, this);
     }
+    void process_sensor_msg(void *buffer);
 };
 
 void imu_handler::callback(const std_msgs::Int16MultiArray::ConstPtr& msg)
@@ -141,6 +156,33 @@ void imu_handler::callback(const std_msgs::Int16MultiArray::ConstPtr& msg)
   mag_msg.magnetic_field.x = msg -> data[6] * magfel_cf;
   mag_msg.magnetic_field.y = msg -> data[7] * magfel_cf;
   mag_msg.magnetic_field.z = msg -> data[8] * magfel_cf;
+
+  ROS_DEBUG_STREAM("imu,  linear acceleration (m/s2): " 
+      << imu_msg.linear_acceleration);
+  ROS_DEBUG_STREAM("imu, angular velocities (rad/s): " 
+      << imu_msg.angular_velocity); 
+  ROS_DEBUG_STREAM("magnetometer, field (Tesla): " 
+      << mag_msg.magnetic_field);
+
+  imu_msg.header.stamp = ros::Time::now();
+  pub_imu.publish(imu_msg); 
+
+  mag_msg.header.stamp = ros::Time::now();
+  pub_mag.publish(mag_msg);
+}
+
+void imu_handler::process_sensor_msg(void *buffer)
+{
+  short *msg = (short *)buffer;
+  imu_msg.linear_acceleration.x = msg[0] * linacc_cf;
+  imu_msg.linear_acceleration.y = msg[1] * linacc_cf;
+  imu_msg.linear_acceleration.z = msg[2] * linacc_cf;
+  imu_msg.angular_velocity.x = msg[3] * angvel_cf;
+  imu_msg.angular_velocity.y = msg[4] * angvel_cf;
+  imu_msg.angular_velocity.z = msg[5] * angvel_cf;
+  mag_msg.magnetic_field.x = msg[6] * magfel_cf;
+  mag_msg.magnetic_field.y = msg[7] * magfel_cf;
+  mag_msg.magnetic_field.z = msg[8] * magfel_cf;
 
   ROS_DEBUG_STREAM("imu,  linear acceleration (m/s2): " 
       << imu_msg.linear_acceleration);
@@ -182,6 +224,7 @@ class gps_handler
     {
       sub = nh.subscribe("gp", 1000, &gps_handler::callback, this);
     }
+    void process_sensor_msg(void *buffer);
 };
 
 void gps_handler::callback(const std_msgs::Int32MultiArray::ConstPtr& msg)
@@ -191,6 +234,26 @@ void gps_handler::callback(const std_msgs::Int32MultiArray::ConstPtr& msg)
   gps_msg.altitude =  msg -> data[2];
   gps_msg.status.status = msg -> data[3];
   gps_msg.status.service = msg -> data[4];
+
+  ROS_DEBUG_STREAM("gps (lat[deg], long[deg], alt[m]), status, service: " 
+      << gps_msg.latitude << ", " 
+      << gps_msg.longitude << ", "
+      << gps_msg.altitude << ", " 
+      << gps_msg.status.status << ", "
+      << gps_msg.status.service);
+
+  gps_msg.header.stamp = ros::Time::now();
+  pub.publish(gps_msg);
+}
+
+void gps_handler::process_sensor_msg(void *buffer)
+{
+  int *msg = (int *)buffer;
+  gps_msg.latitude = msg[0] / 10000000.; 
+  gps_msg.longitude = msg[1] / 10000000.;
+  gps_msg.altitude =  msg[2] / 100.;
+  gps_msg.status.status = msg[3];
+  gps_msg.status.service = msg[4];
 
   ROS_DEBUG_STREAM("gps (lat[deg], long[deg], alt[m]), status, service: " 
       << gps_msg.latitude << ", " 
