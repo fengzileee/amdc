@@ -118,10 +118,10 @@ class imu_handler
     void advertise(ros::NodeHandle nh)
     {
       pub_imu = nh.advertise<sensor_msgs::Imu>("imu_data", 1000);
-      imu_msg.header.frame_id = "odom";
+      imu_msg.header.frame_id = "imu_frame";
 
       pub_mag = nh.advertise<sensor_msgs::MagneticField>("mag_data",1000);
-      mag_msg.header.frame_id = "odom";
+      mag_msg.header.frame_id = "imu_frame";
     }
 
     void subscribe(ros::NodeHandle nh)
