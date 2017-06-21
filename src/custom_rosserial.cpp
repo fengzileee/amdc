@@ -1,5 +1,7 @@
 #include "ros/ros.h"
 #include "ros/console.h"
+#include "sensor_util.h"
+
 #include <iostream>
 
 extern "C"
@@ -11,46 +13,27 @@ using namespace std;
 
 enum state { HEADER1, HEADER2, SIZE, DATA };
 
-void handle_gps(void *buffer)
+// sensors
+ultrasonic_handler ultrasonic[7];
+imu_handler imu; // pub: imu_data
+gps_handler gps; // pub: gps_data
+
+void init_ultrasonic(ros::NodeHandle nh)
 {
-    int *buf = (int *)buffer;
-    int lat = buf[0];
-    int lng = buf[1];
-    int alt = buf[2];
-    int status = buf[3];
-    int service = buf[4];
-    cout << "gps\n";
-    cout << "lat: " << lat << endl;
-    cout << "lng: " << lng << endl;
-    cout << "alt: " << alt << endl;
-    cout << "status: " << status << endl;
-    cout << "service: " << service << endl;
+    for (int i = 1; i <= 7; ++i)
+    {
+        ultrasonic[i - 1].advertise(i, nh);
+    }
 }
 
-void handle_imu_mag(void *buffer)
+void init_imu(ros::NodeHandle nh)
 {
-    short *buf = (short *)buffer;
-    int lin_x = buf[0];
-    int lin_y = buf[1];
-    int lin_z = buf[2];
-    int ang_x = buf[3];
-    int ang_y = buf[4];
-    int ang_z = buf[5];
-    int mag_x = buf[6];
-    int mag_y = buf[7];
-    int mag_z = buf[8];
-    cout << "imu\n";
-    cout << "lin: " << lin_x << "\t" << lin_y << "\t" << lin_z << endl;
-    cout << "ang: " << ang_x << "\t" << ang_y << "\t" << ang_z << endl;
-    cout << "mag: " << mag_x << "\t" << mag_y << "\t" << mag_z << endl;
+    imu.advertise(nh);
 }
 
-void handle_ultrasonic(void *buffer)
+void init_gps(ros::NodeHandle nh)
 {
-    unsigned char *buf = (unsigned char *)buffer;
-    int addr = buf[0];
-    int distance = buf[1];
-    cout << "ultrasonic " << addr << ": " << distance << endl;
+    gps.advertise(nh);
 }
 
 int checksum(void *buffer, int sz)
@@ -74,7 +57,6 @@ void get_serial_data()
 
     unsigned char buf;
     int bytes_recv;
-
 
     switch (sm)
     {
@@ -146,7 +128,7 @@ void get_serial_data()
                 cerr << "Received size 0 data.\n";
                 sm = HEADER1;
             }
-            else if (msg_sz != 3   // ultrasonic
+            else if (msg_sz != 4   // ultrasonic
                   && msg_sz != 19  // imu+mag
                   && msg_sz != 21) // gps
             {
@@ -188,17 +170,18 @@ void get_serial_data()
             {
                 cerr << "Bad checksum: " << received_lrc << endl;
             }
-            else if (msg_sz == 3)
+            else if (msg_sz == 4)
             {
-                handle_ultrasonic(data_buf);
+                int addr = data_buf[0];
+                ultrasonic[addr - 2].process_sensor_msg(data_buf);
             }
             else if (msg_sz == 19)
             {
-                handle_imu_mag(data_buf);
+                imu.process_sensor_msg(data_buf);
             }
             else if (msg_sz == 21)
             {
-                handle_gps(data_buf);
+                gps.process_sensor_msg(data_buf);
             }
             else
             {
@@ -223,8 +206,12 @@ int main(int argc, char **argv)
 
     begin_serial(argv[1], 5); // timeout of 5s
 
+    init_ultrasonic(nh);
+    init_imu(nh);
+    init_gps(nh);
     // TODO
     // publish sensor data
+
     // subscribe to motor control input
     // do serial_write to send motor control input to MCU
 
