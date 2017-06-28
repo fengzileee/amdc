@@ -1,3 +1,4 @@
+<launch>
 <node pkg="robot_localization" type="navsat_transform_node" name="navsat_node">
 	<param name="frequency" value="30"/>
 	<param name="sensor_timeout" value="0.1"/>  
@@ -25,3 +26,4 @@
     <remap from="/odometry/gps" to="odometry_gps" /> 
 
 </node>
+</launch>
