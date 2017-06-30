@@ -3,6 +3,7 @@
 
 #include "ros/ros.h"
 #include "ros/console.h"
+#include "amdc/PropellerCmd.h"
 #include "sensor_msgs/Range.h"
 #include "sensor_msgs/Imu.h"
 #include "sensor_msgs/MagneticField.h"
@@ -271,6 +272,62 @@ void gps_handler::process_sensor_msg(void *buffer)
 
   gps_msg.header.stamp = ros::Time::now();
   pub.publish(gps_msg);
+}
+
+class propeller_handler
+{
+  private:
+    ros::Subscriber sub;
+    ros::Publisher pub; 
+    int mode;
+    int error_code;
+
+  public:
+    amdc::PropellerCmd out_msg;
+    amdc::PropellerCmd feedback_msg;
+    bool update;
+
+    propeller_handler() : update(false)
+    {
+
+    }
+
+    void callback(const amdc::PropellerCmd::ConstPtr&); 
+
+    void advertise(ros::NodeHandle nh)
+    {
+      pub = nh.advertise<amdc::PropellerCmd>("propeller_feedback", 1000);
+    }
+
+    void subscribe(ros::NodeHandle nh)
+    {
+      sub = nh.subscribe("propeller_cmd", 1000, &propeller_handler::callback, this);
+    }
+    void process_sensor_msg(void *buffer);
+};
+
+void propeller_handler::callback(const amdc::PropellerCmd::ConstPtr& msg)
+{
+  out_msg.left_pwm = msg->left_pwm;
+  out_msg.right_pwm = msg->right_pwm;
+  out_msg.left_enable = msg->left_enable;
+  out_msg.right_enable = msg->right_enable;
+  update = true;
+}
+
+void propeller_handler::process_sensor_msg(void *buffer)
+{
+  uint8_t *msg = (uint8_t *) buffer;
+  feedback_msg.left_pwm = msg[0];
+  feedback_msg.left_pwm += msg[1] << 8;
+  feedback_msg.right_pwm = msg[2];
+  feedback_msg.right_pwm += msg[3] << 8;
+  feedback_msg.left_enable = msg[4];
+  feedback_msg.right_enable = msg[5];
+  mode = msg[6];
+  error_code = msg[7];
+
+  pub.publish(feedback_msg);
 }
 
 #endif
