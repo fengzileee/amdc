@@ -327,6 +327,10 @@ void propeller_handler::process_sensor_msg(void *buffer)
   mode = msg[6];
   error_code = msg[7];
 
+  ROS_DEBUG_STREAM("propeller feedback\n"
+      << "mode: " << (mode == 0 ? "auto" : "manual") << "\n"
+      << "error_code: " << error_code << "\n");
+
   pub.publish(feedback_msg);
 }
 
