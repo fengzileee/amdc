@@ -4,6 +4,7 @@ import roslib
 roslib.load_manifest('amdc')
 import rospy
 from amdc.msg import PropellerCmd
+from std_msgs.msg import Bool
 
 from Tkinter import *
 from math import atan2
@@ -114,7 +115,19 @@ class App:
         self.pub.publish(self.msg)
 
 if __name__ == '__main__':
-    rospy.init_node('remote_controller')
-    root = Tk()
-    app = App(root)
-    root.mainloop()
+    try:
+        # ros stuff
+        pub = rospy.Publisher('remote_controlled', Bool, queue_size=10)
+        rospy.init_node('remote_controller')
+        pub.publish(True)
+
+        # gui stuff
+        root = Tk()
+        app = App(root)
+        root.mainloop()
+
+        # app closed
+        pub.publish(False)
+
+    except rospy.ROSInterruptException:
+        pass
