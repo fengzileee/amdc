@@ -115,8 +115,8 @@ class imu_handler
     // 0.061, 4.35, 6842 are the default factors given in the data sheet
     // imu, p15: https://www.pololu.com/file/0J1087/LSM6DS33.pdf
     // magnetometer, p8: https://www.pololu.com/file/0J1089/LIS3MDL.pdf
-    static constexpr double linacc_cf = 0.061, 
-          angvel_cf = 4.35 * 3.14159265359 / 180,
+    static constexpr double linacc_cf = 0.061 / 1000 * 9.81, 
+          angvel_cf = 4.35 * 3.14159265359 / 180 / 1000.,
           magfel_cf = 1. / (10000 * 6842);
     
   public:
