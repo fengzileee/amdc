@@ -71,15 +71,17 @@ void begin_serial(const char *port, int timeout)
     set_blocking(fd, 0, timeout * 10);     // set no blocking
 }
 
-int serial_read(void *buf, int sz)
+int serial_read(void *buf) 
 {
     int b;
-    if ( (b = read(fd, buf, sz)) == -1)
-    {
+
+    if ( (b = read(fd, buf, 4096)) == -1) 
+    {   
         perror("read");
-    }
+    }   
     return b;
 }
+
 
 int serial_write(void *buf, int sz)
 {
@@ -90,4 +92,3 @@ int serial_write(void *buf, int sz)
     }
     return b;
 }
-
