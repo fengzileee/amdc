@@ -1,6 +1,8 @@
 #ifndef sensor_util_H
 #define sensor_util_H
 
+#include "amdc.h"
+
 #include "ros/ros.h"
 #include "ros/console.h"
 #include "sensor_msgs/Range.h"
@@ -36,6 +38,7 @@ class ultrasonic_handler
         ros::Subscriber sub;
         ros::Publisher pub;
         sensor_msgs::Range range_msg;
+        Amdc *amdc;
 
     public:
         // processed proximity value from sensor (in meters)
@@ -52,7 +55,7 @@ class ultrasonic_handler
             error_code = 0;
         }
 
-        void callback(const std_msgs::Int16::ConstPtr&);
+        void callback(const sensor_msgs::Range&);
         void advertise(int id, ros::NodeHandle nh)
         {
             this->id = id;
@@ -62,12 +65,10 @@ class ultrasonic_handler
 
             range_msg.header.frame_id = ultrasonic_info[id - 1].frame_id;
         }
-        void subscribe(int id, ros::NodeHandle nh)
+        void subscribe(int id, ros::NodeHandle nh, Amdc *amdc_handle)
         {
-            this->id = id;
-            std::ostringstream topic;
-            topic << "u" << id;
-            sub = nh.subscribe(topic.str(),
+            amdc = amdc_handle;
+            sub = nh.subscribe(ultrasonic_info[id - 1].topic,
                                1000,
                                &ultrasonic_handler::callback,
                                this);
@@ -75,15 +76,9 @@ class ultrasonic_handler
         void process_sensor_msg(void *buffer);
 };
 
-void ultrasonic_handler::callback(const std_msgs::Int16::ConstPtr& msg)
+void ultrasonic_handler::callback(const sensor_msgs::Range& msg)
 {
-    distance = (float) msg->data / 100;
-    ROS_DEBUG_STREAM("id " << id << ", distance (m): " << distance);
-
-    // publish as Range msg for visualisation in rviz
-    range_msg.header.stamp = ros::Time::now();
-    range_msg.range = distance;
-    pub.publish(range_msg);
+    amdc->range(id) = msg.range;
 }
 
 void ultrasonic_handler::process_sensor_msg(void *buffer)

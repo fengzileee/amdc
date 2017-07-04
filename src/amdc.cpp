@@ -1,31 +1,21 @@
+#include <Eigen/Dense>
+
 #include "ros/ros.h"
 #include "ros/console.h"
+#include "amdc.h"
 #include "sensor_util.h"
 
-// sensors
+Amdc amdc;
+
+// hardware device handlers
 ultrasonic_handler ultrasonic[7];
-imu_handler imu; // pub: imu_data
-gps_handler gps; // pub: gps_data
 
 void init_ultrasonic(ros::NodeHandle nh)
 {
     for (int i = 1; i <= 7; ++i)
     {
-        ultrasonic[i - 1].subscribe(i, nh);
-        ultrasonic[i - 1].advertise(i, nh);
+        ultrasonic[i - 1].subscribe(i, nh, &amdc);
     }
-}
-
-void init_imu(ros::NodeHandle nh)
-{
-    imu.subscribe(nh);
-    imu.advertise(nh);
-}
-
-void init_gps(ros::NodeHandle nh)
-{
-  gps.subscribe(nh);
-  gps.advertise(nh);
 }
 
 void init_vision(ros::NodeHandle nh)
@@ -46,21 +36,9 @@ void init_servo(ros::NodeHandle nh)
     // add publisher here
 }
 
-void do_stuff()
+void update_actuators()
 {
-    // TODO
-    // this is probably where we're going to do the computations?
-    float a = ultrasonic[0].distance + 1;
-}
 
-void publish_propeller_cmd()
-{
-    // TODO
-}
-
-void publish_servo_cmd()
-{
-    // TODO
 }
 
 int main(int argc, char **argv)
@@ -68,10 +46,15 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "computer_node");
     ros::NodeHandle nh;
 
+    //XXX XXX
+    Eigen::VectorXf goal(2);
+    goal << 10, 0;
+    amdc.goals.push(goal);
+    amdc.state << 0,0,0,0,0,0;
+    amdc.range << 6,6,6,6,6,6,6;
+
     // initialise all publisher and subscriber and sensor data
     init_ultrasonic(nh);
-    init_imu(nh);
-    init_gps(nh);
     init_propeller(nh);
     init_servo(nh);
     init_vision(nh);
@@ -79,9 +62,9 @@ int main(int argc, char **argv)
     ros::Rate loop_rate(10);
     while (ros::ok())
     {
-        do_stuff();
-        publish_propeller_cmd();
-        publish_servo_cmd();
+        if (!amdc.remote_controlled)
+            update_state_machine();
+        update_actuators();
 
         // handle callbacks
         ros::spinOnce();
