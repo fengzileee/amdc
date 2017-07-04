@@ -9,6 +9,7 @@ from std_msgs.msg import Bool
 from Tkinter import *
 from math import atan2
 from math import pi
+from time import sleep
 
 window_size = 400
 knob_size = window_size * 0.35
@@ -68,7 +69,7 @@ class App:
 
     def __init__(self, root):
         # ros stuff
-        self.pub = rospy.Publisher('propeller_cmd', PropellerCmd, queue_size=100)
+        self.pub = rospy.Publisher('rc_propeller_cmd', PropellerCmd, queue_size=100)
         self.msg = PropellerCmd()
         # fixed window size
         # set up GUI
@@ -119,6 +120,8 @@ if __name__ == '__main__':
         # ros stuff
         pub = rospy.Publisher('remote_controlled', Bool, queue_size=10)
         rospy.init_node('remote_controller')
+
+        sleep(1) # for some reason I need this in order for the msg to be seen
         pub.publish(True)
 
         # gui stuff

@@ -2,13 +2,22 @@
 
 #include "ros/ros.h"
 #include "ros/console.h"
+#include "std_msgs/Bool.h"
+
 #include "amdc.h"
+#include "amdc/PropellerCmd.h"
 #include "sensor_util.h"
 
 Amdc amdc_s;
 
 // hardware device handlers
 ultrasonic_handler ultrasonic[7];
+
+ros::Publisher propeller_pub;
+amdc::PropellerCmd propeller_msg;
+
+ros::Subscriber rc_cond;
+ros::Subscriber rc_cmd;
 
 void init_ultrasonic(ros::NodeHandle nh)
 {
@@ -19,6 +28,27 @@ void init_ultrasonic(ros::NodeHandle nh)
     }
 }
 
+void remote_controlled_callback(const std_msgs::Bool::ConstPtr& msg)
+{
+    amdc_s.remote_controlled = msg->data;
+
+    ROS_INFO_COND(amdc_s.remote_controlled, "remote controller attached");
+    ROS_INFO_COND(!amdc_s.remote_controlled, "remote controller detached");
+}
+
+void rc_propeller_cmd_callback(const amdc::PropellerCmd& msg)
+{
+    amdc_s.propeller_cmd.left_spd = msg.left_pwm;
+    amdc_s.propeller_cmd.right_spd = msg.right_pwm;
+    amdc_s.propeller_cmd.update = true;
+}
+
+void init_remote_controller(ros::NodeHandle nh)
+{
+    rc_cond = nh.subscribe("remote_controlled", 1000, remote_controlled_callback);
+    rc_cmd = nh.subscribe("rc_propeller_cmd", 1000, rc_propeller_cmd_callback);
+}
+
 void init_vision(ros::NodeHandle nh)
 {
     // TODO
@@ -27,8 +57,7 @@ void init_vision(ros::NodeHandle nh)
 
 void init_propeller(ros::NodeHandle nh)
 {
-    // TODO
-    // add publisher here
+    propeller_pub = nh.advertise<amdc::PropellerCmd>("propeller_cmd", 1000);
 }
 
 void init_servo(ros::NodeHandle nh)
@@ -39,7 +68,16 @@ void init_servo(ros::NodeHandle nh)
 
 void update_actuators()
 {
+    if (amdc_s.propeller_cmd.update == true)
+    {
+        propeller_msg.left_pwm = amdc_s.propeller_cmd.left_spd;
+        propeller_msg.right_pwm = amdc_s.propeller_cmd.right_spd;
+        propeller_msg.left_enable = 1;
+        propeller_msg.right_enable = 1;
 
+        propeller_pub.publish(propeller_msg);
+        amdc_s.propeller_cmd.update = false;
+    }
 }
 
 int main(int argc, char **argv)
@@ -56,6 +94,7 @@ int main(int argc, char **argv)
 
     // initialise all publisher and subscriber and sensor data
     init_ultrasonic(nh);
+    init_remote_controller(nh);
     init_propeller(nh);
     init_servo(nh);
     init_vision(nh);

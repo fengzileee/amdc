@@ -11,6 +11,9 @@ using namespace controller;
 // squared distance in which we consider pose is near goal
 static const float dist_eps = 0.2;
 
+// conversion factor from force to pwm
+static const float force2pwm = 230;
+
 enum sm_states 
 {
     sm_idle,
@@ -42,13 +45,14 @@ enum sm_states go2goal()
     VectorXf cmd;
     cmd = nav_controller(amdc_s.state, amdc_s.goals.front(), amdc_s.range);
 
+    // XXX XXX
     ROS_INFO_STREAM("state\n" << amdc_s.state);
     ROS_INFO_STREAM("range\n" << amdc_s.range);
     ROS_INFO_STREAM("ref\n" << amdc_s.goals.front());
     ROS_INFO_STREAM("propeller cmd\n" << cmd);
 
-    amdc_s.propeller_cmd.left_spd = cmd(0);
-    amdc_s.propeller_cmd.right_spd = cmd(1);
+    amdc_s.propeller_cmd.left_spd = cmd(0) * force2pwm;
+    amdc_s.propeller_cmd.right_spd = cmd(1) * force2pwm;
     amdc_s.propeller_cmd.update = true;
 
     float dist = (amdc_s.goals.front() - amdc_s.state.head(2)).squaredNorm();
