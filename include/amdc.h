@@ -37,7 +37,7 @@ public:
     }
 };
 
-extern Amdc amdc;
+extern Amdc amdc_s;
 
 void update_state_machine();
 

@@ -5,16 +5,17 @@
 #include "amdc.h"
 #include "sensor_util.h"
 
-Amdc amdc;
+Amdc amdc_s;
 
 // hardware device handlers
 ultrasonic_handler ultrasonic[7];
 
 void init_ultrasonic(ros::NodeHandle nh)
 {
-    for (int i = 1; i <= 7; ++i)
+    for (int i = 0; i < 7; ++i)
     {
-        ultrasonic[i - 1].subscribe(i, nh, &amdc);
+        ultrasonic[i].id = i;
+        ultrasonic[i].subscribe(i, nh, &amdc_s);
     }
 }
 
@@ -49,9 +50,9 @@ int main(int argc, char **argv)
     //XXX XXX
     Eigen::VectorXf goal(2);
     goal << 10, 0;
-    amdc.goals.push(goal);
-    amdc.state << 0,0,0,0,0,0;
-    amdc.range << 6,6,6,6,6,6,6;
+    amdc_s.goals.push(goal);
+    amdc_s.state << 0,0,0,0,0,0;
+    amdc_s.range << 6,6,6,6,6,6,6;
 
     // initialise all publisher and subscriber and sensor data
     init_ultrasonic(nh);
@@ -62,7 +63,7 @@ int main(int argc, char **argv)
     ros::Rate loop_rate(10);
     while (ros::ok())
     {
-        if (!amdc.remote_controlled)
+        if (!amdc_s.remote_controlled)
             update_state_machine();
         update_actuators();
 

@@ -5,6 +5,7 @@
 
 #include "ros/ros.h"
 #include "ros/console.h"
+#include "amdc/PropellerCmd.h"
 #include "sensor_msgs/Range.h"
 #include "sensor_msgs/Imu.h"
 #include "sensor_msgs/MagneticField.h"
@@ -34,14 +35,14 @@ const struct
 class ultrasonic_handler
 {
     private:
-        int id;
         ros::Subscriber sub;
         ros::Publisher pub;
         sensor_msgs::Range range_msg;
-        Amdc *amdc;
+        Amdc *amdc_s;
 
     public:
         // processed proximity value from sensor (in meters)
+        int id;
         float distance;
         int error_code;
 
@@ -58,17 +59,16 @@ class ultrasonic_handler
         void callback(const sensor_msgs::Range&);
         void advertise(int id, ros::NodeHandle nh)
         {
-            this->id = id;
             pub = nh.advertise<sensor_msgs::Range>(
-                        ultrasonic_info[id - 1].topic,
+                        ultrasonic_info[id].topic,
                         1000);
 
-            range_msg.header.frame_id = ultrasonic_info[id - 1].frame_id;
+            range_msg.header.frame_id = ultrasonic_info[id].frame_id;
         }
         void subscribe(int id, ros::NodeHandle nh, Amdc *amdc_handle)
         {
-            amdc = amdc_handle;
-            sub = nh.subscribe(ultrasonic_info[id - 1].topic,
+            amdc_s = amdc_handle;
+            sub = nh.subscribe(ultrasonic_info[id].topic,
                                1000,
                                &ultrasonic_handler::callback,
                                this);
@@ -78,7 +78,7 @@ class ultrasonic_handler
 
 void ultrasonic_handler::callback(const sensor_msgs::Range& msg)
 {
-    amdc->range(id) = msg.range;
+    amdc_s->range(id) = msg.range;
 }
 
 void ultrasonic_handler::process_sensor_msg(void *buffer)
@@ -109,8 +109,8 @@ class imu_handler
     // 0.061, 4.35, 6842 are the default factors given in the data sheet
     // imu, p15: https://www.pololu.com/file/0J1087/LSM6DS33.pdf
     // magnetometer, p8: https://www.pololu.com/file/0J1089/LIS3MDL.pdf
-    static constexpr double linacc_cf = 0.061, 
-          angvel_cf = 4.35 * 3.14159265359 / 180,
+    static constexpr double linacc_cf = 0.061 / 1000 * 9.81, 
+          angvel_cf = 4.35 * 3.14159265359 / 180 / 1000.,
           magfel_cf = 1. / (10000 * 6842);
     
   public:
@@ -266,6 +266,66 @@ void gps_handler::process_sensor_msg(void *buffer)
 
   gps_msg.header.stamp = ros::Time::now();
   pub.publish(gps_msg);
+}
+
+class propeller_handler
+{
+  private:
+    ros::Subscriber sub;
+    ros::Publisher pub; 
+    int mode;
+    int error_code;
+
+  public:
+    amdc::PropellerCmd out_msg;
+    amdc::PropellerCmd feedback_msg;
+    bool update;
+
+    propeller_handler() : update(false)
+    {
+
+    }
+
+    void callback(const amdc::PropellerCmd::ConstPtr&); 
+
+    void advertise(ros::NodeHandle nh)
+    {
+      pub = nh.advertise<amdc::PropellerCmd>("propeller_feedback", 1000);
+    }
+
+    void subscribe(ros::NodeHandle nh)
+    {
+      sub = nh.subscribe("propeller_cmd", 1000, &propeller_handler::callback, this);
+    }
+    void process_sensor_msg(void *buffer);
+};
+
+void propeller_handler::callback(const amdc::PropellerCmd::ConstPtr& msg)
+{
+  out_msg.left_pwm = msg->left_pwm;
+  out_msg.right_pwm = msg->right_pwm;
+  out_msg.left_enable = msg->left_enable;
+  out_msg.right_enable = msg->right_enable;
+  update = true;
+}
+
+void propeller_handler::process_sensor_msg(void *buffer)
+{
+  uint8_t *msg = (uint8_t *) buffer;
+  feedback_msg.left_pwm = msg[0];
+  feedback_msg.left_pwm += msg[1] << 8;
+  feedback_msg.right_pwm = msg[2];
+  feedback_msg.right_pwm += msg[3] << 8;
+  feedback_msg.left_enable = msg[4];
+  feedback_msg.right_enable = msg[5];
+  mode = msg[6];
+  error_code = msg[7];
+
+  ROS_DEBUG_STREAM("propeller feedback\n"
+      << "mode: " << (mode == 0 ? "auto" : "manual") << "\n"
+      << "error_code: " << error_code << "\n");
+
+  pub.publish(feedback_msg);
 }
 
 #endif
