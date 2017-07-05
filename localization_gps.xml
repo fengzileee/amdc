@@ -17,11 +17,11 @@
     <param name="magnetic_declination_radians" value="0.216666667"/>
 
     <!-- input topics -->
-    <remap from="/imu/data" to="imu_mag_fused" />
-    <remap from="/gps/fix" to="gps_data" />
-    <remap from="/odometry/filtered" to="odometry_odom" />
+    <remap from="imu/data" to="imu_mag_fused" />
+    <remap from="gps/fix" to="gps_data" />
+    <remap from="odometry/filtered" to="odometry_odom" />
 
     <!-- output topic -->
-    <remap from="/odometry/gps" to="odometry_gps" /> 
+    <remap from="odometry/gps" to="odometry_gps" /> 
 
 </node>
