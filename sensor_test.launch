@@ -1,13 +1,12 @@
 <launch>
     <node pkg="amdc" type="custom_rosserial" name="serial_node" 
-    args="/dev/ttyUSB4" />
+    args="/dev/ttyUSB0" />
     <node pkg="rosbag" type="record" name="record_gps" 
     args="-O sensors_bag gps_data imu_data mag_data ultrasonic_btm_left ultrasonic_left ultrasonic_top_left ultrasonic_top ultrasoic_top_right ultrasonic_right ultrasonic_btm_right" />
-    <node pkg="rosbag" type="record" name="rosbag_record_diag"
-    args="-O debug_bag /tmp/hrp2-diag /diagnostics /rosout"/>   
 
-    <include file="static_transformation.xml" />
-    <include file="imu_mag_fusion.xml" />
-    <include file="localization.xml" />
-    <include file="localization_gps.xml" />
+    <include file="$(find amdc)/amdc_launch/static_transformation.xml" />
+    <include file="$(find amdc)/amdc_launch/imu_mag_fusion.xml" />
+    <include file="$(find amdc)/amdc_launch/localization.xml" />
+    <include file="$(find amdc)/amdc_launch/localization_gps.xml" />
 </launch>
+

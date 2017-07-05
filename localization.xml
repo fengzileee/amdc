@@ -1,4 +1,5 @@
-<node pkg="robot_locolization" type="ukf_localization_node" name="odom_ukf">
+<launch>
+<node pkg="robot_localization" type="ukf_localization_node" name="odom_ukf">
 	<param name="frequency" value="30"/>
 
 	<!-- The period, in seconds, after which we consider a sensor to have timed out. In this event, we
@@ -51,11 +52,11 @@
 
 <!-- Rahul: Only yaw and omega(along z-axis) is set as true -->
 
-	<rosparam param="imu0_config">[false, false, false, 
-		  false,  false,  true, 
-		  false, false, false, 
-		  false,  false,  true,
-		  true,  true,  false]</rosparam>
+   <rosparam param="imu0_config">[false,  false,  false,
+                                  false,  false,  true,
+                                  false,  false,  false,
+                                  false,  false,  true,
+                                  true,   true,   true]</rosparam>
 
 	  <!-- The best practice for including new sensors in robot_localization's state estimation nodes is to pass in velocity 
 		   measurements and let the nodoes integrate them. However, this isn't always feasible, and so the state estimation
@@ -119,3 +120,4 @@
     <remap from="odometry/filtered" to="odometry_odom"/>
 
 </node>
+</launch>

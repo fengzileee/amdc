@@ -1,6 +1,8 @@
+<launch>
 <node pkg="amdc" type="computer_node" name="computer_node">
 </node>
 
 <node pkg="amdc" type="custom_rosserial" name="serial_node" 
     args="/dev/ttyUSB4">
 </node>
+</launch>

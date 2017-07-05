@@ -1,3 +1,4 @@
+<launch>
 <node pkg="imu_filter_madgwick" type="imu_filter_node" name="imu_mag_filter"> 
     <param name="world_frame" value="enu"/>
     <param name="use_mag" value="true"/>
@@ -10,3 +11,4 @@
 
     <remap from="imu/data" to="imu_mag_fused"/> <!-- type: sensor_msgs/Imu -->
 </node>
+</launch>
