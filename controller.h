@@ -75,12 +75,13 @@ void control_input_cap(VectorXf& u)
         (u(1) < - U_LIMIT ? -U_LIMIT : u(1));
 }
 
-VectorXf u2pwd(const VectorXf& u)
+VectorXf u2pwm(const VectorXf& u)
 {
     float pwm_right = u(0) * 230 / U_LIMIT; 
     float pwm_left = u(1) * 230 / U_LIMIT; 
-    Vector2f ret << pwm_left, pwm_right; 
-    return ref;
+    Vector2f ret; 
+    ret << pwm_left, pwm_right; 
+    return ret;
 }
 
 VectorXf controller_vw2u(const VectorXf& state, 
