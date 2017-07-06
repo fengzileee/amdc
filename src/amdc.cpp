@@ -99,6 +99,9 @@ int main(int argc, char **argv)
     init_servo(nh);
     init_vision(nh);
 
+    ros::Subscriber amdc_state_update_sub = nh.subscribe("odometry_gps", 
+            1, &Amdc::stateUpdateCallback, &amdc_s);
+
     ros::Rate loop_rate(10);
     while (ros::ok())
     {
