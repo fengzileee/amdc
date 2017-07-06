@@ -41,6 +41,7 @@
       <!-- input remapping -->
       <remap from="/imu/data" to="imu_mag_fused"/>
       <remap from="/gps/fix" to="gps_data"/>
+      <remap from="/odometry/filtered" to="odometry_gps"/>
 
       <!-- can do output remapping also -->
 
@@ -85,6 +86,7 @@
                                false, false, false,
                                false, false, false]</rosparam>
       <param name="odom0_differential" value="false"/>
+       <remap from="odometry/filtered" to="odometry_gps"/>
     </node>
 
 </launch>
