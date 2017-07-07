@@ -19,9 +19,9 @@ propeller_handler propeller; // pub: propeller_feedback
 
 void init_ultrasonic(ros::NodeHandle nh)
 {
-    for (int i = 1; i <= 7; ++i)
+    for (int i = 0; i < 7; ++i)
     {
-        ultrasonic[i - 1].advertise(i, nh);
+        ultrasonic[i].advertise(i, nh);
     }
 }
 

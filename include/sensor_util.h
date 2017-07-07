@@ -1,6 +1,8 @@
 #ifndef sensor_util_H
 #define sensor_util_H
 
+#include "amdc.h"
+
 #include "ros/ros.h"
 #include "ros/console.h"
 #include "amdc/PropellerCmd.h"
@@ -33,13 +35,14 @@ const struct
 class ultrasonic_handler
 {
     private:
-        int id;
         ros::Subscriber sub;
         ros::Publisher pub;
         sensor_msgs::Range range_msg;
+        Amdc *amdc_s;
 
     public:
         // processed proximity value from sensor (in meters)
+        int id;
         float distance;
         int error_code;
 
@@ -53,22 +56,19 @@ class ultrasonic_handler
             error_code = 0;
         }
 
-        void callback(const std_msgs::Int16::ConstPtr&);
+        void callback(const sensor_msgs::Range&);
         void advertise(int id, ros::NodeHandle nh)
         {
-            this->id = id;
             pub = nh.advertise<sensor_msgs::Range>(
-                        ultrasonic_info[id - 1].topic,
+                        ultrasonic_info[id].topic,
                         1000);
 
-            range_msg.header.frame_id = ultrasonic_info[id - 1].frame_id;
+            range_msg.header.frame_id = ultrasonic_info[id].frame_id;
         }
-        void subscribe(int id, ros::NodeHandle nh)
+        void subscribe(int id, ros::NodeHandle nh, Amdc *amdc_handle)
         {
-            this->id = id;
-            std::ostringstream topic;
-            topic << "u" << id;
-            sub = nh.subscribe(topic.str(),
+            amdc_s = amdc_handle;
+            sub = nh.subscribe(ultrasonic_info[id].topic,
                                1000,
                                &ultrasonic_handler::callback,
                                this);
@@ -76,15 +76,9 @@ class ultrasonic_handler
         void process_sensor_msg(void *buffer);
 };
 
-void ultrasonic_handler::callback(const std_msgs::Int16::ConstPtr& msg)
+void ultrasonic_handler::callback(const sensor_msgs::Range& msg)
 {
-    distance = (float) msg->data / 100;
-    ROS_DEBUG_STREAM("id " << id << ", distance (m): " << distance);
-
-    // publish as Range msg for visualisation in rviz
-    range_msg.header.stamp = ros::Time::now();
-    range_msg.range = distance;
-    pub.publish(range_msg);
+    amdc_s->range(id) = msg.range;
 }
 
 void ultrasonic_handler::process_sensor_msg(void *buffer)
@@ -200,9 +194,11 @@ void imu_handler::process_sensor_msg(void *buffer)
       << mag_msg.magnetic_field);
 
   imu_msg.header.stamp = ros::Time::now();
+  imu_msg.header.frame_id = "imu_frame";
   pub_imu.publish(imu_msg); 
 
   mag_msg.header.stamp = ros::Time::now();
+  mag_msg.header.frame_id = "imu_frame";
   pub_mag.publish(mag_msg);
 }
 
@@ -271,6 +267,7 @@ void gps_handler::process_sensor_msg(void *buffer)
       << gps_msg.status.service);
 
   gps_msg.header.stamp = ros::Time::now();
+  gps_msg.header.frame_id = "map";
   pub.publish(gps_msg);
 }
 
