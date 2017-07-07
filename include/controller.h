@@ -13,20 +13,21 @@ using namespace Eigen;
 static double PI = 3.1415926535897931;
 
 // ============== parameters ===============
-static const float ARRIVE_RANGE = 0.25,
-             BOUNDARY_FOLLOWING_THRESH = 0.7,
-             RUN_AWAY_THRESH = 0.4,
+static const float ARRIVE_RANGE = 0.5,
+             BOUNDARY_FOLLOWING_THRESH = 4,
+             RUN_AWAY_THRESH = 2.75,
+             STATE_SWITCH_BUFFER = 0.5,
              CLOSE_DIST = 1., // when to slow down
              DIV_SPEED = 0.1, 
              OA_SPEED = 0.2,
              NAV_SPEED = 0.2,
-             U_LIMIT = 1;
+             U_LIMIT = 64;
 
 static const float sensor_angles_array[7] = {-2.2, -1.2, -0.5, 0., 0.5, 1.2, 2.2};
 
 bool not_sensor_angle_init = 1;
 static const int sensor_num = 7;
-static const float sensor_cap = 0.9;
+static const float sensor_cap = 4.8;
 
 static const struct
 {
@@ -35,8 +36,8 @@ static const struct
     const float l; // distance between the propellers
 } robot_para = 
 {
-    1, 
-    1, 
+    100, 
+    75, 
     1
 };
 
@@ -153,7 +154,7 @@ VectorXf controller_div(VectorXf state,
     // gains of this controller, and controller parameters
     static const float k_p_turn = 0.25, 
                  k_d_turn = 0.25,
-                 k_lateral_p = 4; 
+                 k_lateral_p = 3; 
 
     static VectorXf sensor_angles(7); 
     sensor_angles << sensor_angles_array[0], 
@@ -242,24 +243,44 @@ VectorXf nav_controller(VectorXf& state,
                   sensor_angles_array[6];
     static const float k_p_turn = 0.5, 
                  k_d_turn = 0.5, 
-                 k_lateral_p = 4;
+                 k_lateral_p = 3;
+    enum controller_state 
+    {
+        stay_state, 
+        oa_state, 
+        div_state, 
+        nav_state
+    };
+
+    static controller_state cstate = nav_state;
 
     VectorXf u;
     VectorXf x = state.head(2);
     VectorXf goal_vector = ref - x;
 
     float min_point_sensor_reading = point_sensor_readings.minCoeff(); 
-    bool boundary_following_check, run_away_check, stay_at_goal_check;
-    run_away_check = min_point_sensor_reading < RUN_AWAY_THRESH;
-    boundary_following_check = min_point_sensor_reading < BOUNDARY_FOLLOWING_THRESH; 
-    stay_at_goal_check = goal_vector.norm() < ARRIVE_RANGE;
 
     point_sensor_readings = (point_sensor_readings.array() > sensor_cap)
         .select(0, sensor_cap - point_sensor_readings.array());
 
-    if (run_away_check)
+    if (goal_vector.norm() < ARRIVE_RANGE)
+        cstate = stay_state; 
+    else if (min_point_sensor_reading < RUN_AWAY_THRESH - STATE_SWITCH_BUFFER) 
+        cstate = oa_state;
+    else if (RUN_AWAY_THRESH + STATE_SWITCH_BUFFER <= 
+            min_point_sensor_reading)
+    {
+        if (min_point_sensor_reading < BOUNDARY_FOLLOWING_THRESH - 
+                STATE_SWITCH_BUFFER)
+            cstate = div_state; 
+        else if (BOUNDARY_FOLLOWING_THRESH + 
+                STATE_SWITCH_BUFFER <= min_point_sensor_reading) 
+            cstate = nav_state; 
+    }
+
+    if (oa_state)
         u = controller_oa(state, point_sensor_readings);
-    else if (boundary_following_check)
+    else if (div_state)
         u = controller_div(state, point_sensor_readings);
     else 
     {
@@ -274,7 +295,7 @@ VectorXf nav_controller(VectorXf& state,
         float v_d = goal_vector.norm() < CLOSE_DIST ? 
             NAV_SPEED * goal_vector.norm() / CLOSE_DIST : NAV_SPEED;
         float omega_d;
-        if (stay_at_goal_check)
+        if (stay_state)
         {
             // stay at goal controller
             if (std::cos(heading_err > 0))
