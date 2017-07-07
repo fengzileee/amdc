@@ -21,6 +21,7 @@ void init_ultrasonic(ros::NodeHandle nh)
 {
     for (int i = 0; i < 7; ++i)
     {
+        ultrasonic[i].id = i;
         ultrasonic[i].advertise(i, nh);
     }
 }
