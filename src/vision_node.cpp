@@ -13,6 +13,15 @@ using namespace std;
 using namespace cv;
 
 const Scalar green_colour(0, 255, 0);
+const int im_w = 256;
+const int im_h = 144;
+const int sw_wnd_size = 28;
+const int sw_step_size = 14;
+const int sw_xsteps = 1 + (im_w - sw_wnd_size) / sw_step_size;
+const int sw_ysteps = 1 + (im_h - sw_wnd_size) / sw_step_size;
+
+const int num_of_class = 4;
+const int debris_class = 1;
 
 network net;
 
@@ -66,7 +75,7 @@ image Mat_to_image(const Mat &mat)
 // code adapted from darknet
 int predict_classifier(const Mat& mat)
 {
-    int top = 2;
+    int top = num_of_class;
 
     int *indexes = (int *)calloc(top, sizeof(int));
     int size = net.w;
@@ -75,13 +84,10 @@ int predict_classifier(const Mat& mat)
     image r = resize_min(im, size);
     resize_network(&net, r.w, r.h);
 
-    float *predictions = network_predict(net, r.data);
+    float *predictions = network_predict(net, im.data);
     if (net.hierarchy)
         hierarchy_predictions(predictions, net.outputs, net.hierarchy, 1, 1);
     top_k(predictions, net.outputs, top, indexes);
-
-    if(r.data != im.data)
-        free_image(r);
 
     int result = indexes[0];
     
@@ -93,18 +99,44 @@ int predict_classifier(const Mat& mat)
 
 int main(int argc, char **argv)
 {
-    if (argc < 4)
+    VideoCapture cap;
+
+    if (argc < 3)
     {
-        cerr << "usage: " << argv[0] << " cfg" << " weights" << " video" << endl;
+        cerr << "usage: " << argv[0] << " cfg" << " weights" << " [video]" << endl;
         return 1;
     }
+    else if (argc == 3)
+    {
+        cap.open("rtsp://192.168.1.10:554/user=admin&password=&channel=1&stream=0.sdp?");
+    }
+    else
+    {
+        cap.open(argv[3]);
+    }
 
-    VideoCapture cap(argv[3]);
     if (!cap.isOpened())
     {
         cerr << "cannot open video." << endl;
         return 1;
     }
+
+    //// XXX
+    //VideoWriter output_video;
+    //output_video.open("./hehe.mp4",
+                      //cap.get(CV_CAP_PROP_FOURCC),
+                      //cap.get(CV_CAP_PROP_FPS),
+                      //cv::Size(cap.get(CV_CAP_PROP_FRAME_WIDTH), 
+                               //cap.get(CV_CAP_PROP_FRAME_HEIGHT)));
+    //if (!output_video.isOpened())
+    //{
+        //cerr << "Cannot open video for writing." << endl;
+        //exit(-1);
+    //}
+    //else
+    //{
+        //cout << "Writing video ..." << endl;
+    //}
 
     // set up CNN
     net = parse_network_cfg(argv[1]);
@@ -115,27 +147,31 @@ int main(int argc, char **argv)
     vector<Rect> raw_bbox, merged_bbox;
 
     namedWindow("predictions",1);
+
     while (1)
     {
         Mat capture, original, frame;
 
         if (!cap.read(capture))
-            exit(0);
+            break;
 
-        resize(capture, frame, Size(498, 280), 0, 0, CV_INTER_AREA);
+        resize(capture, frame, Size(im_w, im_h), 0, 0, CV_INTER_AREA);
 
         original = frame.clone();
         raw_bbox.clear();
         merged_bbox.clear();
 
-        for (int x = 0; x < 27; ++x)
+        for (int x = 0; x < sw_xsteps; ++x)
         {
-            for (int y = 0; y < 14; ++y)
+            for (int y = 0; y < sw_ysteps; ++y)
             {
-                Rect grid_rect(x*14, y*14, 28, 28);
+                Rect grid_rect(x*sw_step_size, 
+                               y*sw_step_size,
+                               sw_wnd_size,
+                               sw_wnd_size);
                 Mat grid = original(grid_rect);
                 int p = predict_classifier(grid);
-                if (p == 0) // debris found
+                if (p == debris_class) // debris found
                 {
                     raw_bbox.push_back(grid_rect);
                 }
@@ -144,15 +180,14 @@ int main(int argc, char **argv)
 
         merge_bounding_boxes(merged_bbox, raw_bbox);
         for (auto bbox : merged_bbox)
-        {
             rectangle(frame, bbox, green_colour, 3);
         }
 
         imshow("predictions", frame);
         if(waitKey(1) == 27)
-            exit(0);
+            break;
     }
-
+    cap.release();
     return 0;
 }
 
