@@ -194,9 +194,11 @@ void imu_handler::process_sensor_msg(void *buffer)
       << mag_msg.magnetic_field);
 
   imu_msg.header.stamp = ros::Time::now();
+  imu_msg.header.frame_id = "imu_frame";
   pub_imu.publish(imu_msg); 
 
   mag_msg.header.stamp = ros::Time::now();
+  mag_msg.header.frame_id = "imu_frame";
   pub_mag.publish(mag_msg);
 }
 
@@ -265,6 +267,7 @@ void gps_handler::process_sensor_msg(void *buffer)
       << gps_msg.status.service);
 
   gps_msg.header.stamp = ros::Time::now();
+  gps_msg.header.frame_id = "map";
   pub.publish(gps_msg);
 }
 

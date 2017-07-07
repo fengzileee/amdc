@@ -42,8 +42,9 @@ enum sm_states idle()
 
 enum sm_states go2goal()
 {
-    VectorXf cmd;
+    VectorXf cmd, cmd_pwm;
     cmd = nav_controller(amdc_s.state, amdc_s.goals.front(), amdc_s.range);
+    cmd_pwm = u2pwm(cmd);
 
     // XXX XXX
     ROS_INFO_STREAM("state\n" << amdc_s.state);
@@ -51,8 +52,8 @@ enum sm_states go2goal()
     ROS_INFO_STREAM("ref\n" << amdc_s.goals.front());
     ROS_INFO_STREAM("propeller cmd\n" << cmd);
 
-    amdc_s.propeller_cmd.left_spd = cmd(0) * force2pwm;
-    amdc_s.propeller_cmd.right_spd = cmd(1) * force2pwm;
+    amdc_s.propeller_cmd.left_spd = cmd_pwm(0);
+    amdc_s.propeller_cmd.right_spd = cmd_pwm(1);
     amdc_s.propeller_cmd.update = true;
 
     float dist = (amdc_s.goals.front() - amdc_s.state.head(2)).squaredNorm();
