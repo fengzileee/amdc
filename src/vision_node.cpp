@@ -1,7 +1,11 @@
+#include <ros/ros.h>
+#include <ros/console.h>
+
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+
 #include <iostream>
 
 extern "C"
@@ -99,6 +103,9 @@ int predict_classifier(const Mat& mat)
 
 int main(int argc, char **argv)
 {
+    ros::init(argc, argv, "vision_node");
+    ros::NodeHandle nh;
+
     VideoCapture cap;
 
     if (argc < 3)
@@ -148,7 +155,7 @@ int main(int argc, char **argv)
 
     namedWindow("predictions", WINDOW_NORMAL);
 
-    while (1)
+    while (ros::ok())
     {
         Mat capture, original, frame;
 

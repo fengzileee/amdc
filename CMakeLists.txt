@@ -212,5 +212,10 @@ add_executable(vision_node src/vision_node.cpp)
 add_executable(custom_rosserial src/custom_rosserial.cpp)
 
 target_link_libraries(amdc ${catkin_LIBRARIES})
-target_link_libraries(vision_node ${OpenCV_LIBS} Threads::Threads libdarknet.a)
+target_link_libraries(vision_node 
+    ${catkin_LIBRARIES} 
+    ${OpenCV_LIBS} 
+    Threads::Threads 
+    libdarknet.a
+)
 target_link_libraries(custom_rosserial ${catkin_LIBRARIES})
