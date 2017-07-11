@@ -181,7 +181,6 @@ int main(int argc, char **argv)
         merge_bounding_boxes(merged_bbox, raw_bbox);
         for (auto bbox : merged_bbox)
             rectangle(frame, bbox, green_colour, 3);
-        }
 
         imshow("predictions", frame);
         if(waitKey(1) == 27)
