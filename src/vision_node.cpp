@@ -146,7 +146,7 @@ int main(int argc, char **argv)
 
     vector<Rect> raw_bbox, merged_bbox;
 
-    namedWindow("predictions",1);
+    namedWindow("predictions", WINDOW_NORMAL);
 
     while (1)
     {
