@@ -6,7 +6,10 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
+#include "boost/program_options.hpp"
+
 #include <iostream>
+#include <string>
 
 extern "C"
 {
@@ -15,6 +18,10 @@ extern "C"
 
 using namespace std;
 using namespace cv;
+namespace po = boost::program_options;
+
+const string video_url = 
+"rtsp://192.168.1.10:554/user=admin&password=&channel=1&stream=0.sdp?";
 
 const Scalar green_colour(0, 255, 0);
 const int im_w = 256;
@@ -27,7 +34,60 @@ const int sw_ysteps = 1 + (im_h - sw_wnd_size) / sw_step_size;
 const int num_of_class = 4;
 const int debris_class = 1;
 
+string cfg_file;
+string weights_file;
+string video_file;
+
 network net;
+
+void parse_options(int argc, char **argv)
+{
+    po::options_description desc("Allowed options");
+    desc.add_options()
+        ("help,h", "vision node")
+        ("cfg,c", po::value<string>(), "darknet configuration file")
+        ("weights,w", po::value<string>(), "darknet weights file")
+        ("file,f", po::value<string>(), "darknet weights file");
+
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::notify(vm);    
+
+    if (vm.count("help"))
+    {
+        cout << desc << endl;
+        exit(0);
+    }
+
+    if (vm.count("cfg"))
+    {
+        cfg_file = vm["cfg"].as<string>();
+    }
+    else
+    {
+        cerr << "cfg not set\n";
+        exit(-1);
+    }
+
+    if (vm.count("weights"))
+    {
+        weights_file = vm["weights"].as<string>();
+    }
+    else
+    {
+        cerr << "weights not set\n";
+        exit(-1);
+    }
+
+    if (vm.count("file"))
+    {
+        video_file = vm["file"].as<string>();
+    }
+    else
+    {
+        video_file = video_url;
+    }
+}
 
 void merge_bounding_boxes(vector<Rect>& out, const vector<Rect>& in)
 {
@@ -108,19 +168,9 @@ int main(int argc, char **argv)
 
     VideoCapture cap;
 
-    if (argc < 3)
-    {
-        cerr << "usage: " << argv[0] << " cfg" << " weights" << " [video]" << endl;
-        return 1;
-    }
-    else if (argc == 3)
-    {
-        cap.open("rtsp://192.168.1.10:554/user=admin&password=&channel=1&stream=0.sdp?");
-    }
-    else
-    {
-        cap.open(argv[3]);
-    }
+    parse_options(argc, argv);
+
+    cap.open(video_file);
 
     if (!cap.isOpened())
     {
@@ -146,8 +196,8 @@ int main(int argc, char **argv)
     //}
 
     // set up CNN
-    net = parse_network_cfg(argv[1]);
-    load_weights(&net, argv[2]);
+    net = parse_network_cfg((char *) cfg_file.c_str());
+    load_weights(&net, (char *) weights_file.c_str());
     set_batch_network(&net, 1);
     srand(2222222);
 

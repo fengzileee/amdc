@@ -20,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 find_package (OpenCV REQUIRED)
+find_package (Boost REQUIRED COMPONENTS program_options)
 
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -215,6 +216,7 @@ target_link_libraries(amdc ${catkin_LIBRARIES})
 target_link_libraries(vision_node 
     ${catkin_LIBRARIES} 
     ${OpenCV_LIBS} 
+    ${Boost_LIBRARIES} 
     Threads::Threads 
     libdarknet.a
 )
