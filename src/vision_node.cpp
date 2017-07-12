@@ -8,8 +8,11 @@
 
 #include "boost/program_options.hpp"
 
+#include <ctime>
 #include <iostream>
+#include <iomanip>
 #include <string>
+#include <sstream>
 
 extern "C"
 {
@@ -37,6 +40,8 @@ const int debris_class = 1;
 string cfg_file;
 string weights_file;
 string video_file;
+string save_video_file;
+bool save_video = false;
 
 network net;
 
@@ -47,7 +52,8 @@ void parse_options(int argc, char **argv)
         ("help,h", "vision node")
         ("cfg,c", po::value<string>(), "darknet configuration file")
         ("weights,w", po::value<string>(), "darknet weights file")
-        ("file,f", po::value<string>(), "darknet weights file");
+        ("file,f", po::value<string>(), "source video file (leave empty to use camera)")
+        ("save,s", "save output video");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -86,6 +92,18 @@ void parse_options(int argc, char **argv)
     else
     {
         video_file = video_url;
+    }
+
+
+    if (vm.count("save"))
+    {
+        save_video = true;
+
+        auto t = std::time(nullptr);
+        auto tm = *std::localtime(&t);
+        stringstream ss;
+        ss << std::put_time(&tm, "obj_det_%d-%m-%Y_%H-%M-%S.mp4");
+        save_video_file = ss.str();
     }
 }
 
@@ -167,6 +185,7 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
 
     VideoCapture cap;
+    VideoWriter output_video;
 
     parse_options(argc, argv);
 
@@ -178,22 +197,22 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    //// XXX
-    //VideoWriter output_video;
-    //output_video.open("./hehe.mp4",
-                      //cap.get(CV_CAP_PROP_FOURCC),
-                      //cap.get(CV_CAP_PROP_FPS),
-                      //cv::Size(cap.get(CV_CAP_PROP_FRAME_WIDTH), 
-                               //cap.get(CV_CAP_PROP_FRAME_HEIGHT)));
-    //if (!output_video.isOpened())
-    //{
-        //cerr << "Cannot open video for writing." << endl;
-        //exit(-1);
-    //}
-    //else
-    //{
-        //cout << "Writing video ..." << endl;
-    //}
+    if (save_video)
+    {
+        output_video.open(save_video_file,
+                          cap.get(CV_CAP_PROP_FOURCC),
+                          cap.get(CV_CAP_PROP_FPS),
+                          cv::Size(im_w, im_h));
+        if (!output_video.isOpened())
+        {
+            cerr << "Cannot open video for writing." << endl;
+            exit(-1);
+        }
+        else
+        {
+            cout << "Saving video to " << save_video_file << endl;
+        }
+    }
 
     // set up CNN
     net = parse_network_cfg((char *) cfg_file.c_str());
@@ -240,10 +259,13 @@ int main(int argc, char **argv)
             rectangle(frame, bbox, green_colour, 3);
 
         imshow("predictions", frame);
+        if (save_video)
+            output_video << frame;
         if(waitKey(1) == 27)
             break;
     }
     cap.release();
+    output_video.release();
     return 0;
 }
 
