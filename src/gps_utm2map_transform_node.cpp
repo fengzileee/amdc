@@ -1,5 +1,7 @@
 #include <ros/ros.h>
 #include "nav_msgs/Odometry.h"
+#include "geometry_msgs/PoseWithCovariance.h"
+#include "geometry_msgs/TwistWithCovariance.h"
 
 #include <tf2_ros/transform_listener.h>
 #include "tf2_ros/message_filter.h"
@@ -20,17 +22,17 @@ class GPSTrans
         }
 
         //  Callback to register with tf2_ros::MessageFilter to be called when transforms are available
-        void msgCallback(const nav_msgs::Odometry& odom_ptr) 
+        void msgCallback(const nav_msgs::OdometryConstPtr& odom_ptr) 
         {
             nav_msgs::Odometry odom_out;
             try 
             {
                 buffer_.transform(*odom_ptr, odom_out, target_frame_);
-                point_pub_.publisher(odom_out);
+                point_pub_.publish(odom_out);
 
                 ROS_INFO("point of reference point in frame of robot map Position(x:%f y:%f)\n", 
-                        odom_out.pose.pose.point.x,
-                        odom_out.pose.pose.point.y);
+                        odom_out.pose.pose.position.x,
+                        odom_out.pose.pose.position.y);
             }
             catch (tf2::TransformException &ex) 
             {

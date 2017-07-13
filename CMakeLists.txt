@@ -210,6 +210,7 @@ find_package (Threads REQUIRED)
 add_executable(amdc src/amdc.cpp src/sm.cpp)
 add_executable(vision_node src/vision_node.cpp)
 add_executable(custom_rosserial src/custom_rosserial.cpp)
+add_executable(GPS_utm2map_transform_node src/gps_utm2map_transform_node.cpp)
 
 target_link_libraries(amdc ${catkin_LIBRARIES})
 target_link_libraries(vision_node ${OpenCV_LIBS} Threads::Threads libdarknet.a)
