@@ -226,7 +226,7 @@ class gps_handler
     void advertise(ros::NodeHandle nh)
     {
       pub = nh.advertise<sensor_msgs::NavSatFix>("gps_data", 1000);
-      gps_msg.header.frame_id = "map";
+      gps_msg.header.frame_id = "gps_frame";
     }
 
     void subscribe(ros::NodeHandle nh)
