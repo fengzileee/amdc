@@ -1,5 +1,6 @@
 #include <ros/ros.h>
 #include <ros/console.h>
+#include <geometry_msgs/Point.h>
 #include <sensor_msgs/Image.h>
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
@@ -30,13 +31,20 @@ namespace po = boost::program_options;
 const string video_url = 
 "rtsp://192.168.1.10:554/user=admin&password=&channel=1&stream=0.sdp?";
 
-const Scalar green_colour(0, 255, 0);
+// output video/image size
 const int im_w = 256;
 const int im_h = 144;
+
+// target position for debris to go to
+const int target_x = im_w / 2;
+const int target_y = im_h;
+
+// properties of sliding window
 const int sw_wnd_size = 28;
 const int sw_step_size = 14;
 const int sw_xsteps = 1 + (im_w - sw_wnd_size) / sw_step_size;
 const int sw_ysteps = 1 + (im_h - sw_wnd_size) / sw_step_size;
+const Scalar green_colour(0, 255, 0);
 
 const int num_of_class = 4;
 const int debris_class = 1;
@@ -221,6 +229,34 @@ int predict_classifier(const Mat& mat)
     return result;
 }
 
+void set_nearest_debris(const vector<Rect>& bboxes,
+                        geometry_msgs::Point &point)
+{
+    // x/y coord of center of bbox
+    int bb_x, bb_y;
+    int dist;
+
+    point.x = -1;
+    point.y = -1;
+
+    int nearest_dist = 9999999;
+
+    for (auto &bbox : bboxes)
+    {
+        bb_x = bbox.x + bbox.width / 2;
+        bb_y = bbox.y + bbox.height / 2;
+        dist = (bb_x - target_x) * (bb_x - target_x) + 
+                  (bb_y - target_y) * (bb_y - target_y);
+
+        if (dist < nearest_dist)
+        {
+            point.x = (float) bb_x / im_w;
+            point.y = (float) bb_y / im_h;
+            nearest_dist = dist;
+        }
+    }
+}
+
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "vision_node");
@@ -243,6 +279,11 @@ int main(int argc, char **argv)
     image_transport::ImageTransport it(nh);
     image_transport::Publisher pub = it.advertise("camera/image", 1);
     sensor_msgs::ImagePtr msg;
+
+    // set up debris coordinates publisher
+    ros::Publisher coord_pub;
+    coord_pub = nh.advertise<geometry_msgs::Point>("debris_coord", 1);
+    geometry_msgs::Point coord_msg;
 
     if (save_video)
     {
@@ -307,6 +348,9 @@ int main(int argc, char **argv)
         merge_bounding_boxes(merged_bbox, raw_bbox, true);
         for (auto bbox : merged_bbox)
             rectangle(frame, bbox, green_colour, 3);
+
+        set_nearest_debris(merged_bbox, coord_msg);
+        coord_pub.publish(coord_msg);
 
         // publish image as ros msg
         msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", frame).toImageMsg();
