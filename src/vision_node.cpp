@@ -46,6 +46,7 @@ string weights_file;
 string video_file;
 string save_video_file;
 bool save_video = false;
+bool visualise = false;
 
 network net;
 
@@ -57,6 +58,7 @@ void parse_options(int argc, char **argv)
         ("cfg,c", po::value<string>(), "darknet configuration file")
         ("weights,w", po::value<string>(), "darknet weights file")
         ("file,f", po::value<string>(), "source video file (leave empty to use camera)")
+        ("visualise,v", "display video with opencv");
         ("save,s", "save output video");
 
     po::variables_map vm;
@@ -98,6 +100,10 @@ void parse_options(int argc, char **argv)
         video_file = video_url;
     }
 
+    if (vm.count("visualise"))
+    {
+        visualise = true;
+    }
 
     if (vm.count("save"))
     {
@@ -263,7 +269,8 @@ int main(int argc, char **argv)
 
     vector<Rect> raw_bbox, merged_bbox;
 
-    namedWindow("predictions", WINDOW_NORMAL);
+    if (visualise)
+        namedWindow("predictions", WINDOW_NORMAL);
 
     while (ros::ok())
     {
@@ -306,7 +313,8 @@ int main(int argc, char **argv)
         pub.publish(msg);
 
         // show and save frame
-        imshow("predictions", frame);
+        if (visualise)
+            imshow("predictions", frame);
         if (save_video)
             output_video << frame;
         if(waitKey(1) == 27)
