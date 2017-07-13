@@ -13,6 +13,7 @@
 #include <iomanip>
 #include <string>
 #include <sstream>
+#include <unordered_set>
 
 extern "C"
 {
@@ -107,28 +108,61 @@ void parse_options(int argc, char **argv)
     }
 }
 
-void merge_bounding_boxes(vector<Rect>& out, const vector<Rect>& in)
+/**
+ * Merge overlapping Rects.
+ * \param out   output Rect
+ * \param in    input Rect
+ */
+void merge_bounding_boxes(vector<Rect>& out, vector<Rect>& in, bool correct_order)
 {
     Rect merged;
     if (in.size() == 0)
         return;
 
-    merged = in[0];
-    for (auto bbox : in)
+    bool unchanged = true;
+
+    unordered_set<int> unmerged;
+    for (int i = 0; i < in.size(); ++i)
+        unmerged.insert(i);
+
+    for (int i = 0; i < in.size(); ++i)
     {
-        Rect intersection = bbox & merged;
-        if (intersection.area() > 0)
+        merged = in[i];
+        bool was_merged = false;
+
+        for (int j = i + 1; j < in.size(); ++j)
         {
-            merged = bbox | merged;
+            Rect intersection = in[j] & merged;
+            if (intersection.area() > 0)
+            {
+                merged = in[j] | merged;
+                unmerged.erase(i);
+                unmerged.erase(j);
+                was_merged = true;
+            }
         }
-        else
+
+        if (was_merged)
         {
+            unchanged = false;
             out.push_back(merged);
-            merged = bbox;
         }
     }
 
-    out.push_back(merged);
+    for (auto &i : unmerged)
+        out.push_back(in[i]);
+
+    if (unchanged == false)
+    {
+        in.clear();
+        merge_bounding_boxes(in, out, !correct_order);
+    }
+    else if (correct_order == false)
+    {
+        in.clear();
+        for (auto &bbox : out)
+            in.push_back(bbox);
+    }
 }
 
 // code adapted from darknet
@@ -159,7 +193,7 @@ int predict_classifier(const Mat& mat)
 {
     int top = num_of_class;
 
-    int *indexes = (int *)calloc(top, sizeof(int));
+    int indexes[num_of_class];
     int size = net.w;
 
     image im = Mat_to_image(mat);
@@ -173,7 +207,6 @@ int predict_classifier(const Mat& mat)
 
     int result = indexes[0];
     
-    free(indexes);
     free_image(im);
 
     return result;
@@ -254,7 +287,7 @@ int main(int argc, char **argv)
             }
         }
 
-        merge_bounding_boxes(merged_bbox, raw_bbox);
+        merge_bounding_boxes(merged_bbox, raw_bbox, true);
         for (auto bbox : merged_bbox)
             rectangle(frame, bbox, green_colour, 3);
 
