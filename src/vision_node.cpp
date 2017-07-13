@@ -66,7 +66,7 @@ void parse_options(int argc, char **argv)
         ("cfg,c", po::value<string>(), "darknet configuration file")
         ("weights,w", po::value<string>(), "darknet weights file")
         ("file,f", po::value<string>(), "source video file (leave empty to use camera)")
-        ("visualise,v", "display video with opencv");
+        ("visualise,v", "display video with opencv")
         ("save,s", "save output video");
 
     po::variables_map vm;
@@ -288,8 +288,8 @@ int main(int argc, char **argv)
     if (save_video)
     {
         output_video.open(save_video_file,
-                          cap.get(CV_CAP_PROP_FOURCC),
-                          cap.get(CV_CAP_PROP_FPS),
+                          VideoWriter::fourcc('X', '2', '6', '4'),
+                          30,
                           cv::Size(im_w, im_h));
         if (!output_video.isOpened())
         {
