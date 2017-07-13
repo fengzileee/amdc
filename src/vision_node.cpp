@@ -1,5 +1,8 @@
 #include <ros/ros.h>
 #include <ros/console.h>
+#include <sensor_msgs/Image.h>
+#include <image_transport/image_transport.h>
+#include <cv_bridge/cv_bridge.h>
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/core.hpp>
@@ -230,6 +233,11 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    // set up ros image publisher
+    image_transport::ImageTransport it(nh);
+    image_transport::Publisher pub = it.advertise("camera/image", 1);
+    sensor_msgs::ImagePtr msg;
+
     if (save_video)
     {
         output_video.open(save_video_file,
@@ -270,6 +278,7 @@ int main(int argc, char **argv)
         raw_bbox.clear();
         merged_bbox.clear();
 
+        // perform prediction on sliding window
         for (int x = 0; x < sw_xsteps; ++x)
         {
             for (int y = 0; y < sw_ysteps; ++y)
@@ -287,10 +296,16 @@ int main(int argc, char **argv)
             }
         }
 
+        // merge overlapping sliding windows
         merge_bounding_boxes(merged_bbox, raw_bbox, true);
         for (auto bbox : merged_bbox)
             rectangle(frame, bbox, green_colour, 3);
 
+        // publish image as ros msg
+        msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", frame).toImageMsg();
+        pub.publish(msg);
+
+        // show and save frame
         imshow("predictions", frame);
         if (save_video)
             output_video << frame;
