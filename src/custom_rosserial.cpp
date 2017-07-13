@@ -194,6 +194,14 @@ int main(int argc, char **argv)
         send_propeller_command();
     }
 
+    // stop propeller before shutdown
+    propeller.update = true;
+    propeller.out_msg.left_pwm = 0;
+    propeller.out_msg.right_pwm = 0;
+    propeller.out_msg.left_enable = 0;
+    propeller.out_msg.right_enable = 0;
+    send_propeller_command();
+
     return 0;
 }
 
