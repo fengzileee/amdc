@@ -1,13 +1,16 @@
 <launch>
     <node pkg="amdc" type="custom_rosserial" name="serial_node" 
-    args="/dev/ttyUSB4" />
+    args="/dev/ttyUSB0"
+    output="screen"/>
     <node pkg="rosbag" type="record" name="record_gps" 
-    args="-O sensors_bag gps_data imu_data mag_data ultrasonic_btm_left ultrasonic_left ultrasonic_top_left ultrasonic_top ultrasonic_top_right ultrasonic_right ultrasonic_btm_right" />
+    args="-o sensors_bag gps_data imu_data mag_data ultrasonic_btm_left ultrasonic_left ultrasonic_top_left ultrasonic_top ultrasonic_top_right ultrasonic_right ultrasonic_btm_right" />
 
     <include file="$(find amdc)/amdc_launch/static_transformation.xml" />
     <include file="$(find amdc)/amdc_launch/imu_mag_fusion.xml" />
     <include file="$(find amdc)/amdc_launch/localization.xml" />
     <include file="$(find amdc)/amdc_launch/local.xml" />
+    <include file="$(find amdc)/amdc_launch/robot.xml" />
+    <include file="$(find amdc)/amdc_launch/video_test.launch" />
     <!--<include file="$(find amdc)/amdc_launch/localization_gps.xml" />-->
 </launch>
 
