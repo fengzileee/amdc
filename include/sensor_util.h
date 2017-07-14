@@ -267,7 +267,7 @@ void gps_handler::process_sensor_msg(void *buffer)
       << gps_msg.status.service);
 
   gps_msg.header.stamp = ros::Time::now();
-  gps_msg.header.frame_id = "map";
+  gps_msg.header.frame_id = "gps_frame";
   pub.publish(gps_msg);
 }
 
