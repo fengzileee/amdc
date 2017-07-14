@@ -9,10 +9,16 @@ project(amdc)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  message_filters
+  tf2
+  tf2_geometry_msgs
+  tf2_ros
   roscpp
   rospy
   sensor_msgs
   std_msgs
+  nav_msgs
+  geometry_msgs
   tf
   message_generation
 )
@@ -210,7 +216,9 @@ find_package (Threads REQUIRED)
 add_executable(amdc src/amdc.cpp src/sm.cpp)
 add_executable(vision_node src/vision_node.cpp)
 add_executable(custom_rosserial src/custom_rosserial.cpp)
+add_executable(GPS_utm2map_transform_node src/gps_utm2map_transform_node.cpp)
 
 target_link_libraries(amdc ${catkin_LIBRARIES})
 target_link_libraries(vision_node ${OpenCV_LIBS} Threads::Threads libdarknet.a)
 target_link_libraries(custom_rosserial ${catkin_LIBRARIES})
+target_link_libraries(GPS_utm2map_transform_node ${catkin_LIBRARIES})
