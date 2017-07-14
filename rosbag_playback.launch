@@ -1,11 +1,11 @@
 <launch>
     <node pkg="rosbag" type="play" name="playback"
-    args="sensors_bag.bag" />
+    args="$(arg bag)" />
 
     <include file="$(find amdc)/amdc_launch/static_transformation.xml" />
     <include file="$(find amdc)/amdc_launch/imu_mag_fusion.xml" />
-    <include file="$(find amdc)/amdc_launch/local.xml" />
     <include file="$(find amdc)/amdc_launch/localization.xml" />
-    <!--<include file="$(find amdc)/amdc_launch/localization_gps.xml" />-->
+    <include file="$(find amdc)/amdc_launch/localization_gps.xml" />
+    <include file="$(find amdc)/amdc_launch/robot.xml" />
 </launch>
 
