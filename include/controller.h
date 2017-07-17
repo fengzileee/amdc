@@ -30,28 +30,28 @@ namespace controller
     {
 
         protected: 
-            const double PI = 3.1415926535897931;
+            const double PI;
 
             // ============== parameters ===============
-            const float ARRIVE_RANGE = 0.5,
-                  BOUNDARY_FOLLOWING_THRESH = 4,
-                  RUN_AWAY_THRESH = 2.75,
-                  STATE_SWITCH_BUFFER = 0.5,
-                  CLOSE_DIST = 1., // when to slow down
-                  DIV_SPEED = 0.1, 
-                  OA_SPEED = 0.2,
-                  NAV_SPEED = 0.2,
-                  U_LIMIT = 64;
+            const float ARRIVE_RANGE,
+                  BOUNDARY_FOLLOWING_THRESH,
+                  RUN_AWAY_THRESH,
+                  STATE_SWITCH_BUFFER,
+                  CLOSE_DIST, // when to slow down
+                  DIV_SPEED, 
+                  OA_SPEED,
+                  NAV_SPEED,
+                  U_LIMIT;
 
             VectorXf sensor_angles; 
-            const float sensor_angles_array[7] = {-2.2, -1.2, -0.5, 0., 0.5, 1.2, 2.2};
-            const int sensor_num = 7;
-            const float sensor_cap = 4.8;
-            const gains oa_gains = {0.5, 0.5, 0};
-            const gains div_gains = {0.25, 0.25, 3};
-            const gains stay_gains = {0.5, 0.5, 3};
-            const gains g2g_gains = {0.5, 0.5, 3};
-            robot_parameter par = {100, 75, 1};
+            const float sensor_angles_array[7];
+            const float sensor_cap;
+            const gains oa_gains;
+            const gains div_gains;
+            const gains stay_gains;
+            const gains g2g_gains;
+            robot_parameter par;
+
             // ======================================
             float atan2_angle(float theta)
             {
@@ -317,7 +317,21 @@ namespace controller
             }
 
 
-            Controller()
+            Controller(): 
+                PI(3.1415926535897931), 
+                ARRIVE_RANGE(0.5),
+                BOUNDARY_FOLLOWING_THRESH(4), 
+                RUN_AWAY_THRESH(2.75), 
+                STATE_SWITCH_BUFFER(0.5), 
+                CLOSE_DIST(1), 
+                DIV_SPEED(0.1), OA_SPEED(0.2), 
+                NAV_SPEED(0.2), U_LIMIT(64), 
+                sensor_angles_array({-2.2, -1.2, -0.5, 0., 0.5, 1.2, 2.2}),
+                sensor_cap(4.8), oa_gains({0.5,0.5,0}),
+                div_gains({0.25, 0.25, 3}), 
+                stay_gains({0.5, 0.5, 3}),
+                g2g_gains({0.5, 0.5, 3}), 
+                par({100, 75, 1})
             {
                 sensor_angles.resize(7);
                 for (int it = 0; it < 7; it ++)
