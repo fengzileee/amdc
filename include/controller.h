@@ -12,6 +12,11 @@ namespace controller
 
     struct gains
     {
+        /*
+        p:  proportional gain 
+        d:  derivative gain 
+        lp: lateral velocity proportional gain
+        */
         float p, d, lp;
     };
 
@@ -20,10 +25,15 @@ namespace controller
         float m, I, l;
     };
 
-    struct perception
+    struct obstacle_perception
     {
-        VectorXf goal_vector; 
-        float heading_d, dheading_err, heading_err; 
+        /* 
+        detX (detY):            x (y) coordinate of detected obstacles
+        detX_sum (detY_sum):    summation of all sensors' x (y) coordinates
+        */
+        VectorXf detX, detY; 
+        VectorXf ahead, all, ahead_unit, all_unit;
+        float ang, ahead_ang, aheadX, aheadY, detX_sum, detY_sum;
     };
 
     class Controller
@@ -44,6 +54,7 @@ namespace controller
                   U_LIMIT;
 
             VectorXf sensor_angles; 
+            VectorXf obstacle_sensor_scale;
             const float sensor_angles_array[7];
             const float sensor_cap;
             const gains oa_gains;
@@ -51,6 +62,9 @@ namespace controller
             const gains stay_gains;
             const gains g2g_gains;
             robot_parameter par;
+
+            // ============== states (robot and environment) ===============
+            obstacle_perception operc; 
 
             // ======================================
             float atan2_angle(float theta)
@@ -79,6 +93,24 @@ namespace controller
                 return local_v;
             }
 
+            void update_obstacle_perception(VectorXf& state, 
+                    VectorXf& point_sensor_readings)
+            {
+                operc.detX = point_sensor_readings.array() * sensor_angles.array().cos();
+                operc.detY = point_sensor_readings.array() * sensor_angles.array().sin();
+                operc.all(0) = operc.detX;
+                operc.all(1) = operc.detY;
+                operc.all_unit = _ahead.array() / obs_ahead.norm();
+                operc.ang = std::atan2(operc.detY_sum, operc.detX_sum);
+
+                operc.aheadX = (operc.detX.array() * obstacle_sensor_scale.array()).sum();
+                operc.aheadY = (operc.detY.array() * obstacle_sensor_scale.array()).sum();
+                operc.ahead(0) = operc.aheadX;
+                operc.ahead(1) = operc.aheadY;
+                operc.ahead_unit = _ahead.array() / obs_ahead.norm();
+                operc.ahead_ang = std::atan2(operc.aheadY, operc.aheadX);
+            }
+
             void control_input_cap(VectorXf& u)
             {
                 u(0) = u(0) > U_LIMIT ? U_LIMIT : 
@@ -86,6 +118,7 @@ namespace controller
                 u(1) = u(1) > U_LIMIT ? U_LIMIT : 
                     (u(1) < - U_LIMIT ? -U_LIMIT : u(1));
             }
+
             VectorXf vw2u(const VectorXf& state, 
                     const float v_d, 
                     const float omega_d)
@@ -112,20 +145,11 @@ namespace controller
             VectorXf controller_oa(VectorXf& state, 
                     VectorXf& point_sensor_readings)
             {
-                VectorXf detectionX, detectionY, local_v; 
-                detectionX = point_sensor_readings.array() * sensor_angles.array().cos();
-                detectionY = point_sensor_readings.array() * sensor_angles.array().sin();
-                local_v = global2local_v(state);
-
-                float& v_heading = local_v(0); 
-                float& v_lateral = local_v(1);
-                float detectionX_sum = detectionX.sum(),
-                      detectionY_sum = detectionY.sum();
-                float obstacle_angle = std::atan2(detectionY_sum, detectionX_sum); 
+                update_obstacle_perception(&state, &point_sensor_readings);
 
                 float heading_err, heading_err_inv;
                 float& dheading_err = state(5);
-                heading_err = obstacle_angle;
+                heading_err = operc.ang;
                 heading_err_inv = heading_err + PI; 
                 heading_err_inv = atan2_angle(heading_err_inv); 
 
@@ -147,40 +171,22 @@ namespace controller
             VectorXf controller_div(VectorXf state, 
                     const VectorXf& point_sensor_readings)
             {
-                // gains of this controller, and controller parameters
+                update_obstacle_perception(&state, &point_sensor_readings);
 
-                VectorXf detectionX, detectionY, local_v; 
-                detectionX = point_sensor_readings.array() * sensor_angles.array().cos();
-                detectionY = point_sensor_readings.array() * sensor_angles.array().sin();
+                VectorXf local_v; 
                 local_v = global2local_v(state);
-                float& v_heading = local_v(0); 
-                float& v_lateral = local_v(1);
-
-                // obstacles ahead
-                VectorXf scale_ahead = sensor_angles.array().cos().matrix(); 
-                float obs_ahead_x = (detectionX.array() * scale_ahead.array()).sum();
-                float obs_ahead_y = (detectionY.array() * scale_ahead.array()).sum();
-                VectorXf obs_ahead(2);
-                obs_ahead << obs_ahead_x, obs_ahead_y; 
-                VectorXf obs_ahead_unit = obs_ahead.array() / obs_ahead.norm();
-                float obs_ahead_angle = std::atan2(obs_ahead_y, obs_ahead_x);
-
-                // overall obstacle
-                VectorXf obstacle_all(2), obstacle_all_unit(2);
-                obstacle_all << detectionX.sum(), detectionY.sum(); 
-                obstacle_all_unit = obstacle_all.array() / obstacle_all.norm();
 
                 float heading_err;
                 // decide the control input
-                if ((obs_ahead_unit.dot(obstacle_all_unit) > 0.86) &&
-                        (obs_ahead_angle > 0))
+                if ((operc.ahead_unit.dot(operc.all_unit) > 0.86) &&
+                        (operc.ahead_ang > 0))
                 {
-                    heading_err = obs_ahead_angle - PI / 2;
+                    heading_err = operc.ahead_ang - PI / 2;
                 }
                 else
-                    heading_err = - obs_ahead_angle;
+                    heading_err = - operc.ahead_ang;
 
-                heading_err = heading_err - div_gains.lp * v_lateral; 
+                heading_err = heading_err - div_gains.lp * local_v(1); 
                 heading_err = atan2_angle(heading_err); 
                 float dheading_err = state(5); 
 
@@ -336,6 +342,10 @@ namespace controller
                 sensor_angles.resize(7);
                 for (int it = 0; it < 7; it ++)
                     sensor_angles(it) = sensor_angles_array[it];
+                obstacle_sensor_scale.resize(7); 
+                obstacle_sensor_scale = sensor_angles.array().cos().matrix();
+                operc.all.resize(2);
+                operc.ahead.resize(2);
             }
 
 
