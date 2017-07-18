@@ -1,8 +1,5 @@
 #include <ros/ros.h>
-#include "nav_msgs/Odometry.h"
 #include "geometry_msgs/PointStamped.h"
-#include "geometry_msgs/PoseWithCovariance.h"
-#include "geometry_msgs/TwistWithCovariance.h"
 
 #include <tf2_ros/transform_listener.h>
 #include "tf2_ros/message_filter.h"
@@ -17,25 +14,23 @@ class GPSTrans
             tf2_(buffer_),  target_frame_("map"),
             tf2_filter_(point_sub_, buffer_, target_frame_, 10, 0)
         {
-            point_sub_.subscribe(n_, "target_gps_odometry_utm", 10);
-            //point_pub_ = n_.advertise<nav_msgs::Odometry>("target_gps_odometry_map", 10);
+            point_sub_.subscribe(n_, "target_gps_point_utm", 10);
+            point_pub_ = n_.advertise<geometry_msgs::PointStamped>("target_gps_odometry_map", 10);
             tf2_filter_.registerCallback( boost::bind(&GPSTrans::msgCallback, this, _1) );
         }
 
         //  Callback to register with tf2_ros::MessageFilter to be called when transforms are available
-        //void msgCallback(const nav_msgs::OdometryConstPtr& odom_ptr) 
         void msgCallback(const geometry_msgs::PointStampedConstPtr& odom_ptr) 
         {
-            //nav_msgs::Odometry odom_out;
             geometry_msgs::PointStamped odom_out;
             try 
             {
                 buffer_.transform(*odom_ptr, odom_out, target_frame_);
-                //point_pub_.publish(odom_out);
+                point_pub_.publish(odom_out);
 
-                //ROS_INFO("point of reference point in frame of robot map Position(x:%f y:%f)\n", 
-                        //odom_out.pose.pose.position.x,
-                        //odom_out.pose.pose.position.y);
+                ROS_INFO("point of reference point in frame of robot map Position(x:%f y:%f)\n", 
+                        odom_out.point.x,
+                        odom_out.point.y);
             }
             catch (tf2::TransformException &ex) 
             {
@@ -48,7 +43,6 @@ class GPSTrans
         tf2_ros::Buffer buffer_;
         tf2_ros::TransformListener tf2_;
         ros::NodeHandle n_;
-        //message_filters::Subscriber<nav_msgs::Odometry> point_sub_;
         message_filters::Subscriber<geometry_msgs::PointStamped> point_sub_;
         ros::Publisher point_pub_;
         tf2_ros::MessageFilter<geometry_msgs::PointStamped> tf2_filter_;
