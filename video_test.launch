@@ -1,0 +1,8 @@
+<launch>
+    <node pkg="amdc" type="vision_node" name="vision_node" 
+        args="--cfg $(find amdc)/data/new_swimming_4class.cfg
+        --weights $(find amdc)/data/new_swimming_4class.weights
+        --save"
+        />
+</launch>
+
