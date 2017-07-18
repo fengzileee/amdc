@@ -98,16 +98,18 @@ namespace controller
             {
                 operc.detX = point_sensor_readings.array() * sensor_angles.array().cos();
                 operc.detY = point_sensor_readings.array() * sensor_angles.array().sin();
-                operc.all(0) = operc.detX;
-                operc.all(1) = operc.detY;
-                operc.all_unit = _ahead.array() / obs_ahead.norm();
+                operc.detX_sum = (point_sensor_readings.array() * sensor_angles.array().cos()).sum();
+                operc.detY_sum = (point_sensor_readings.array() * sensor_angles.array().sin()).sum();
+                operc.all(0) = operc.detX_sum;
+                operc.all(1) = operc.detY_sum;
+                operc.all_unit = operc.ahead.array() / operc.ahead.norm();
                 operc.ang = std::atan2(operc.detY_sum, operc.detX_sum);
 
                 operc.aheadX = (operc.detX.array() * obstacle_sensor_scale.array()).sum();
                 operc.aheadY = (operc.detY.array() * obstacle_sensor_scale.array()).sum();
                 operc.ahead(0) = operc.aheadX;
                 operc.ahead(1) = operc.aheadY;
-                operc.ahead_unit = _ahead.array() / obs_ahead.norm();
+                operc.ahead_unit = operc.ahead.array() / operc.ahead.norm();
                 operc.ahead_ang = std::atan2(operc.aheadY, operc.aheadX);
             }
 
@@ -145,7 +147,7 @@ namespace controller
             VectorXf controller_oa(VectorXf& state, 
                     VectorXf& point_sensor_readings)
             {
-                update_obstacle_perception(&state, &point_sensor_readings);
+                update_obstacle_perception(state, point_sensor_readings);
 
                 float heading_err, heading_err_inv;
                 float& dheading_err = state(5);
@@ -168,10 +170,10 @@ namespace controller
                 return vw2u(state, v_d, omega_d);
             }
 
-            VectorXf controller_div(VectorXf state, 
-                    const VectorXf& point_sensor_readings)
+            VectorXf controller_div(VectorXf& state, 
+                    VectorXf& point_sensor_readings)
             {
-                update_obstacle_perception(&state, &point_sensor_readings);
+                update_obstacle_perception(state, point_sensor_readings);
 
                 VectorXf local_v; 
                 local_v = global2local_v(state);
@@ -196,14 +198,11 @@ namespace controller
             }
 
             VectorXf controller_stay(VectorXf& state, 
-                    VectorXf& ref, VectorXf point_sensor_readings)
+                    VectorXf& ref)
             {
                 VectorXf x = state.head(2);
                 VectorXf goal_vector = ref - x;
                 VectorXf local_v = global2local_v(state); 
-                float min_point_sensor_reading = point_sensor_readings.minCoeff(); 
-                point_sensor_readings = (point_sensor_readings.array() > sensor_cap)
-                    .select(0, sensor_cap - point_sensor_readings.array());
 
                 float& v_heading = local_v(0); 
                 float& v_lateral = local_v(1);
@@ -231,14 +230,11 @@ namespace controller
             }
 
             VectorXf controller_g2g(VectorXf& state, 
-                    VectorXf& ref, VectorXf point_sensor_readings)
+                    VectorXf& ref)
             {
                 VectorXf x = state.head(2);
                 VectorXf goal_vector = ref - x;
                 VectorXf local_v = global2local_v(state); 
-                float min_point_sensor_reading = point_sensor_readings.minCoeff(); 
-                point_sensor_readings = (point_sensor_readings.array() > sensor_cap)
-                    .select(0, sensor_cap - point_sensor_readings.array());
 
                 float& v_heading = local_v(0); 
                 float& v_lateral = local_v(1);
@@ -303,9 +299,9 @@ namespace controller
                 else 
                 {
                     if (stay_state)
-                        u = controller_stay(state, ref, point_sensor_readings);
+                        u = controller_stay(state, ref);
                     else
-                        u = controller_g2g(state, ref, point_sensor_readings);
+                        u = controller_g2g(state, ref);
 
                 }
 
