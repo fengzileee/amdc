@@ -43,8 +43,9 @@ enum sm_states idle()
 enum sm_states go2goal()
 {
     VectorXf cmd, cmd_pwm;
-    cmd = nav_controller(amdc_s.state, amdc_s.goals.front(), amdc_s.range);
-    cmd_pwm = u2pwm(cmd);
+    static Controller controller;
+    cmd = controller.compute_u(amdc_s.state, amdc_s.goals.front(), amdc_s.range);
+    cmd_pwm = controller.u2pwm(cmd);
 
     // XXX XXX
     ROS_INFO_STREAM("state\n" << amdc_s.state);

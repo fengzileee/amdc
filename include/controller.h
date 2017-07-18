@@ -144,7 +144,7 @@ namespace controller
                 return u;
             }
 
-            VectorXf controller_oa(VectorXf& state, 
+            VectorXf run_away(VectorXf& state, 
                     VectorXf& point_sensor_readings)
             {
                 update_obstacle_perception(state, point_sensor_readings);
@@ -170,7 +170,7 @@ namespace controller
                 return vw2u(state, v_d, omega_d);
             }
 
-            VectorXf controller_div(VectorXf& state, 
+            VectorXf divert(VectorXf& state, 
                     VectorXf& point_sensor_readings)
             {
                 update_obstacle_perception(state, point_sensor_readings);
@@ -197,7 +197,7 @@ namespace controller
                 return vw2u(state, v_d, omega_d);
             }
 
-            VectorXf controller_stay(VectorXf& state, 
+            VectorXf stayATgoal(VectorXf& state, 
                     VectorXf& ref)
             {
                 VectorXf x = state.head(2);
@@ -229,7 +229,7 @@ namespace controller
                 return u;
             }
 
-            VectorXf controller_g2g(VectorXf& state, 
+            VectorXf go2goal(VectorXf& state, 
                     VectorXf& ref)
             {
                 VectorXf x = state.head(2);
@@ -255,7 +255,7 @@ namespace controller
 
         public:
 
-            VectorXf nav_controller(VectorXf& state, 
+            VectorXf compute_u(VectorXf& state, 
                     VectorXf& ref, VectorXf point_sensor_readings)
             { 
                 enum controller_state 
@@ -293,15 +293,15 @@ namespace controller
                 }
 
                 if (oa_state)
-                    u = controller_oa(state, point_sensor_readings);
+                    u = run_away(state, point_sensor_readings);
                 else if (div_state)
-                    u = controller_div(state, point_sensor_readings);
+                    u = divert(state, point_sensor_readings);
                 else 
                 {
                     if (stay_state)
-                        u = controller_stay(state, ref);
+                        u = stayATgoal(state, ref);
                     else
-                        u = controller_g2g(state, ref);
+                        u = go2goal(state, ref);
 
                 }
 
