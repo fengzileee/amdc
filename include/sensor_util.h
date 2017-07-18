@@ -16,7 +16,6 @@
 #include "std_msgs/Float32MultiArray.h"
 #include "geometry_msgs/Vector3.h"
 #include <sstream>
-#include <cstdlib>
 
 const struct
 {
@@ -85,14 +84,10 @@ void ultrasonic_handler::callback(const sensor_msgs::Range& msg)
 void ultrasonic_handler::process_sensor_msg(void *buffer)
 {
     unsigned char *buf = (unsigned char *)buffer;
-    float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-    r /= 2;
     distance = buf[1];
     distance += buf[2] << 8;
     error_code = buf[3];
     distance /= 100.;
-    // XXX XXX
-    distance = r + 5.6;
     ROS_DEBUG_STREAM("id " << id << 
                      ", dist: " << distance <<
                      ", error_code: " << error_code);
@@ -272,7 +267,7 @@ void gps_handler::process_sensor_msg(void *buffer)
       << gps_msg.status.service);
 
   gps_msg.header.stamp = ros::Time::now();
-  gps_msg.header.frame_id = "map";
+  gps_msg.header.frame_id = "gps_frame";
   pub.publish(gps_msg);
 }
 
