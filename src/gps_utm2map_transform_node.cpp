@@ -11,11 +11,11 @@ class GPSTrans
 {
     public:
         GPSTrans() :
-            tf2_(buffer_),  target_frame_("map"),
+            tf2_(buffer_),  target_frame_("odom"),
             tf2_filter_(point_sub_, buffer_, target_frame_, 10, 0)
         {
             point_sub_.subscribe(n_, "target_gps_point_utm", 10);
-            point_pub_ = n_.advertise<geometry_msgs::PointStamped>("target_gps_odometry_map", 10);
+            point_pub_ = n_.advertise<geometry_msgs::PointStamped>("target_gps_odometry_odom", 10);
             tf2_filter_.registerCallback( boost::bind(&GPSTrans::msgCallback, this, _1) );
         }
 
