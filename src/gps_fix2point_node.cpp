@@ -8,7 +8,7 @@ class SubPub
         SubPub()
         {
             pub = nh.advertise<geometry_msgs::PointStamped>("target_gps_point_utm", 10);
-            sub = nh.subscribe("gps_utm_odometry", 10, 
+            sub = nh.subscribe("target_gps_odometry_utm", 10, 
                     &SubPub::fix2point_callback, this);
         }
 
