@@ -14,6 +14,9 @@
     <!-- If this is true, the transform world_frame->utm transform is broadcast 
     for use by other nodes. -->
     <param name="broadcast_utm_transform" value="true"/>
+
+    <!-- XXX XXX XXX -->
+    <!-- this doesn't seem to work? -->
     <param name="broadcast_utm_as_parent_frame" value="true"/>
       <param name="frequency" value="30"/>
 
@@ -59,7 +62,7 @@
       <param name="map_frame" value="map"/>
       <param name="odom_frame" value="odom"/>
       <param name="base_link_frame" value="base_link"/>
-      <param name="world_frame" value="map"/>
+      <param name="world_frame" value="odom"/>
 
       <!-- wheel odometry -->
       <!--<param name="odom0" value="/wheel_odometry"/>-->
