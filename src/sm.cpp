@@ -46,11 +46,7 @@ enum sm_states go2goal()
     cmd = nav_controller(amdc_s.state, amdc_s.goals.front(), amdc_s.range);
     cmd_pwm = u2pwm(cmd);
 
-    // XXX XXX
-    ROS_INFO_STREAM("state\n" << amdc_s.state);
-    ROS_INFO_STREAM("range\n" << amdc_s.range);
-    ROS_INFO_STREAM("ref\n" << amdc_s.goals.front());
-    ROS_INFO_STREAM("propeller cmd\n" << cmd);
+    ROS_DEBUG_STREAM("propeller cmd\n" << cmd_pwm);
 
     amdc_s.propeller_cmd.left_spd = cmd_pwm(0);
     amdc_s.propeller_cmd.right_spd = cmd_pwm(1);
@@ -67,5 +63,9 @@ enum sm_states go2goal()
 
 void update_state_machine()
 {
+    ROS_DEBUG_STREAM("state\n" << amdc_s.state);
+    ROS_DEBUG_STREAM("range\n" << amdc_s.range);
+    ROS_DEBUG_STREAM("ref\n" << amdc_s.goals.front());
+
     state = sm_func[state]();
 }

@@ -85,10 +85,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "computer_node");
     ros::NodeHandle nh;
 
-    //XXX XXX
-    Eigen::VectorXf goal(2);
-    goal << 10, 0;
-    amdc_s.goals.push(goal);
+    // initialise amdc states
     amdc_s.state << 0,0,0,0,0,0;
     amdc_s.range << 6,6,6,6,6,6,6;
 
@@ -101,6 +98,9 @@ int main(int argc, char **argv)
 
     ros::Subscriber amdc_state_update_sub = nh.subscribe("odometry_gps", 
             1, &Amdc::stateUpdateCallback, &amdc_s);
+
+    ros::Subscriber amdc_goal_sub = nh.subscribe("target_gps_odometry_odom", 
+            1, &Amdc::goalCallback, &amdc_s);
 
     ros::Rate loop_rate(10);
     while (ros::ok())

@@ -5,6 +5,7 @@
 #include <Eigen/Dense>
 #include <cmath>
 
+#include "geometry_msgs/PointStamped.h"
 #include <nav_msgs/Odometry.h>
 
 struct PropellerCommand
@@ -60,6 +61,18 @@ public:
         state(3) = msg -> twist.twist.linear.x; 
         state(4) = msg -> twist.twist.linear.y; 
         state(5) = msg -> twist.twist.angular.z; 
+    }
+
+    /**
+     * Callback function that adds a new goal that was published on 
+     * /target_gps_odometry_odom.
+     * \param in   ROS PointStamped message
+     */
+    void goalCallback(const geometry_msgs::PointStamped::ConstPtr& msg)
+    {
+        Eigen::VectorXf goal(2);
+        goal << msg->point.x, msg->point.y;
+        goals.push(goal);
     }
 
 };
