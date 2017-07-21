@@ -313,12 +313,18 @@ int main(int argc, char **argv)
     if (visualise)
         namedWindow("predictions", WINDOW_NORMAL);
 
+    int capture_buf = 0;
     while (ros::ok())
     {
         Mat capture, original, frame;
-
+ 
         if (!cap.read(capture))
-            break;
+        {
+            // XXX
+            // in case we aren't getting the frame due to lag
+            if (capture_buf++ > 1000)
+                break;
+        }
 
         resize(capture, frame, Size(im_w, im_h), 0, 0, CV_INTER_AREA);
 
