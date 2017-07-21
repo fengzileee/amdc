@@ -253,6 +253,10 @@ void gps_handler::callback(const std_msgs::Int32MultiArray::ConstPtr& msg)
 void gps_handler::process_sensor_msg(void *buffer)
 {
   int *msg = (int *)buffer;
+
+  // Only publish legit fix (i.e. when status == 0)
+  if (msg[3] != 0) return;
+
   gps_msg.latitude = msg[0] / 10000000.; 
   gps_msg.longitude = msg[1] / 10000000.;
   gps_msg.altitude =  msg[2] / 100.;
