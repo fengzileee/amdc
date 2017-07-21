@@ -347,5 +347,36 @@ namespace controller
 
     };
 
+    class Controller_VS : public Controller
+    {
+        protected:
+
+        public:
+
+            Controller_VS(): 
+                Controller(),
+                BOUNDARY_FOLLOWING_THRESH(3.5), 
+                RUN_AWAY_THRESH(2), 
+                STATE_SWITCH_BUFFER(0.5), 
+                CLOSE_DIST(1), 
+                DIV_SPEED(0.05), OA_SPEED(0.1), 
+                NAV_SPEED(0.1), 
+                oa_gains({0.5,0.5,0}),
+                div_gains({0.25, 0.25, 3}), 
+                stay_gains({0.5, 0.5, 3}),
+                g2g_gains({0.5, 0.5, 3})
+            {
+                sensor_angles.resize(7);
+                for (int it = 0; it < 7; it ++)
+                    sensor_angles(it) = sensor_angles_array[it];
+                obstacle_sensor_scale.resize(7); 
+                obstacle_sensor_scale = sensor_angles.array().cos().matrix();
+                operc.all.resize(2);
+                operc.ahead.resize(2);
+            }
+
+
+    };
+
 }
 #endif
