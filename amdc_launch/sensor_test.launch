@@ -8,9 +8,7 @@
     <include file="$(find amdc)/amdc_launch/target_gpscoord_2_map_odom.xml" />
     <include file="$(find amdc)/amdc_launch/static_transformation.xml" />
     <include file="$(find amdc)/amdc_launch/imu_mag_fusion.xml" />
-    <include file="$(find amdc)/amdc_launch/localization.xml" />
     <include file="$(find amdc)/amdc_launch/robot.xml" />
     <include file="$(find amdc)/amdc_launch/video_test.launch" />
-    <include file="$(find amdc)/amdc_launch/localization_gps.xml" />
 </launch>
 

@@ -1,0 +1,8 @@
+<launch>
+    <node pkg="rosbag" type="record" name="record_localisation" 
+    args="-o filter_bag odometry_odom odometry_gps" />
+    <include file="$(find amdc)/amdc_launch/localization.xml" />
+    <include file="$(find amdc)/amdc_launch/localization_gps.xml" />
+</launch>
+
+
