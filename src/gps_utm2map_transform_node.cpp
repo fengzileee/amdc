@@ -11,7 +11,7 @@ class GPSTrans
 {
     public:
         GPSTrans() :
-            tf2_(buffer_),  target_frame_("odom"),
+            tf2_(buffer_),  target_frame_("map"),
             tf2_filter_(point_sub_, buffer_, target_frame_, 10, 0)
         {
             point_sub_.subscribe(n_, "target_gps_point_utm", 10);
