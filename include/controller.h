@@ -10,6 +10,14 @@ namespace controller
 
     using namespace Eigen;
 
+    enum controller_state 
+    {
+        stay_state = 0, 
+        oa_state = 1, 
+        div_state = 2, 
+        nav_state = 3
+    };
+   
     struct gains
     {
         /*
@@ -65,6 +73,7 @@ namespace controller
 
             // ============== states (robot and environment) ===============
             obstacle_perception operc; 
+            controller_state cstate;
 
             // ======================================
             float atan2_angle(float theta)
@@ -98,8 +107,8 @@ namespace controller
             {
                 operc.detX = point_sensor_readings.array() * sensor_angles.array().cos();
                 operc.detY = point_sensor_readings.array() * sensor_angles.array().sin();
-                operc.detX_sum = (point_sensor_readings.array() * sensor_angles.array().cos()).sum();
-                operc.detY_sum = (point_sensor_readings.array() * sensor_angles.array().sin()).sum();
+                operc.detX_sum = operc.detX.array().sum();
+                operc.detY_sum = operc.detY.array().sum();
                 operc.all(0) = operc.detX_sum;
                 operc.all(1) = operc.detY_sum;
                 operc.all_unit = operc.ahead.array() / operc.ahead.norm();
@@ -180,10 +189,12 @@ namespace controller
 
                 float heading_err;
                 // decide the control input
-                if ((operc.ahead_unit.dot(operc.all_unit) > 0.86) &&
-                        (operc.ahead_ang > 0))
+                if (operc.ahead_unit.dot(operc.all_unit) > 0.86)
                 {
-                    heading_err = operc.ahead_ang - PI / 2;
+                    if (operc.ahead_ang > 0)
+                        heading_err = operc.ahead_ang - PI / 2;
+                    else 
+                        heading_err = operc.ahead_ang + PI / 2;
                 }
                 else
                     heading_err = - operc.ahead_ang;
@@ -194,6 +205,7 @@ namespace controller
 
                 float v_d = DIV_SPEED; 
                 float omega_d = div_gains.p * heading_err + div_gains.d * dheading_err; 
+
                 return vw2u(state, v_d, omega_d);
             }
 
@@ -249,6 +261,8 @@ namespace controller
                 omega_d = g2g_gains.p * heading_err + g2g_gains.d * dheading_err;
 
                 VectorXf u = vw2u(state, v_d, omega_d);
+
+
                 return u;
             }
 
@@ -258,15 +272,6 @@ namespace controller
             VectorXf compute_u(VectorXf& state, 
                     VectorXf& ref, VectorXf point_sensor_readings)
             { 
-                enum controller_state 
-                {
-                    stay_state, 
-                    oa_state, 
-                    div_state, 
-                    nav_state
-                };
-
-                static controller_state cstate = nav_state;
 
                 VectorXf u;
                 VectorXf x = state.head(2);
@@ -292,19 +297,17 @@ namespace controller
                         cstate = nav_state; 
                 }
 
-                if (oa_state)
+
+                if (cstate == oa_state)
                     u = run_away(state, point_sensor_readings);
-                else if (div_state)
+                else if (cstate == div_state)
                     u = divert(state, point_sensor_readings);
-                else 
-                {
-                    if (stay_state)
-                        u = stayATgoal(state, ref);
-                    else
-                        u = go2goal(state, ref);
+                else if (cstate == stay_state)
+                    u = stayATgoal(state, ref);
+                else if (cstate == nav_state)
+                    u = go2goal(state, ref);
 
-                }
-
+                std::cout << cstate << std::endl;
                 return u;
             }
 
@@ -331,9 +334,10 @@ namespace controller
                 sensor_angles_array({-2.2, -1.2, -0.5, 0., 0.5, 1.2, 2.2}),
                 sensor_cap(4.8), oa_gains({0.5,0.5,0}),
                 div_gains({0.25, 0.25, 3}), 
-                stay_gains({0.5, 0.5, 3}),
+                stay_gains({0.5, 0.5, 4}),
                 g2g_gains({0.5, 0.5, 3}), 
-                par({100, 75, 1})
+                par({100, 75, 1}), 
+                cstate(nav_state)
             {
                 sensor_angles.resize(7);
                 for (int it = 0; it < 7; it ++)
@@ -341,38 +345,9 @@ namespace controller
                 obstacle_sensor_scale.resize(7); 
                 obstacle_sensor_scale = sensor_angles.array().cos().matrix();
                 operc.all.resize(2);
+                operc.all_unit.resize(2);
                 operc.ahead.resize(2);
-            }
-
-
-    };
-
-    class Controller_VS : public Controller
-    {
-        protected:
-
-        public:
-
-            Controller_VS(): 
-                Controller(),
-                BOUNDARY_FOLLOWING_THRESH(3.5), 
-                RUN_AWAY_THRESH(2), 
-                STATE_SWITCH_BUFFER(0.5), 
-                CLOSE_DIST(1), 
-                DIV_SPEED(0.05), OA_SPEED(0.1), 
-                NAV_SPEED(0.1), 
-                oa_gains({0.5,0.5,0}),
-                div_gains({0.25, 0.25, 3}), 
-                stay_gains({0.5, 0.5, 3}),
-                g2g_gains({0.5, 0.5, 3})
-            {
-                sensor_angles.resize(7);
-                for (int it = 0; it < 7; it ++)
-                    sensor_angles(it) = sensor_angles_array[it];
-                obstacle_sensor_scale.resize(7); 
-                obstacle_sensor_scale = sensor_angles.array().cos().matrix();
-                operc.all.resize(2);
-                operc.ahead.resize(2);
+                operc.ahead_unit.resize(2);
             }
 
 
