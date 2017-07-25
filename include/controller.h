@@ -25,7 +25,7 @@ namespace controller
         d:  derivative gain 
         lp: lateral velocity proportional gain
         */
-        float p, d, lp;
+        float p, d;
     };
 
     struct robot_parameter
@@ -137,12 +137,9 @@ namespace controller
                 static float conv_rate_linear = 1.2;
                 static float conv_rate_angular = 4;
 
-                float v_actual = std::cos(state(2)) * state(3) 
-                    + std::sin(state(2)) * state(4);
-                float err_v = v_d - v_actual; 
                 float err_omega = omega_d - state(5); 
 
-                float sum_u = conv_rate_linear * par.m * err_v; 
+                float sum_u = conv_rate_linear * par.m * v_d; 
                 float diff_u = conv_rate_angular * 2 * err_omega * par.I / par.l; 
 
                 VectorXf u(2); 
@@ -184,9 +181,6 @@ namespace controller
             {
                 update_obstacle_perception(state, point_sensor_readings);
 
-                VectorXf local_v; 
-                local_v = global2local_v(state);
-
                 float heading_err;
                 // decide the control input
                 if (operc.ahead_unit.dot(operc.all_unit) > 0.86)
@@ -199,7 +193,6 @@ namespace controller
                 else
                     heading_err = - operc.ahead_ang;
 
-                heading_err = heading_err - div_gains.lp * local_v(1); 
                 heading_err = atan2_angle(heading_err); 
                 float dheading_err = state(5); 
 
@@ -214,13 +207,10 @@ namespace controller
             {
                 VectorXf x = state.head(2);
                 VectorXf goal_vector = ref - x;
-                VectorXf local_v = global2local_v(state); 
 
-                float& v_heading = local_v(0); 
-                float& v_lateral = local_v(1);
                 float heading_d = std::atan2(goal_vector(1), goal_vector(0)); 
                 float heading_err; 
-                heading_err = heading_d - state(2) - stay_gains.lp * v_lateral; 
+                heading_err = heading_d - state(2);
                 heading_err = atan2_angle(heading_err);
                 float dheading_err = state(5); 
                 float v_d = goal_vector.norm() < CLOSE_DIST ? 
@@ -228,7 +218,7 @@ namespace controller
                 float omega_d;
                 if (std::cos(heading_err > 0))
                 {
-                    float heading_err_inv = heading_err + PI + 2 * stay_gains.lp * v_lateral; 
+                    float heading_err_inv = heading_err + PI; 
                     heading_err_inv = atan2_angle(heading_err_inv);
                     v_d = - v_d; 
                     omega_d = stay_gains.p * heading_err_inv + stay_gains.d * dheading_err;
@@ -246,13 +236,10 @@ namespace controller
             {
                 VectorXf x = state.head(2);
                 VectorXf goal_vector = ref - x;
-                VectorXf local_v = global2local_v(state); 
 
-                float& v_heading = local_v(0); 
-                float& v_lateral = local_v(1);
                 float heading_d = std::atan2(goal_vector(1), goal_vector(0)); 
                 float heading_err; 
-                heading_err = heading_d - state(2) - g2g_gains.lp * v_lateral; 
+                heading_err = heading_d - state(2); 
                 heading_err = atan2_angle(heading_err);
                 float dheading_err = state(5); 
                 float v_d = goal_vector.norm() < CLOSE_DIST ? 
@@ -261,7 +248,6 @@ namespace controller
                 omega_d = g2g_gains.p * heading_err + g2g_gains.d * dheading_err;
 
                 VectorXf u = vw2u(state, v_d, omega_d);
-
 
                 return u;
             }
@@ -332,10 +318,10 @@ namespace controller
                 DIV_SPEED(0.1), OA_SPEED(0.2), 
                 NAV_SPEED(0.2), U_LIMIT(64), 
                 sensor_angles_array({-2.2, -1.2, -0.5, 0., 0.5, 1.2, 2.2}),
-                sensor_cap(4.8), oa_gains({0.5,0.5,0}),
-                div_gains({0.25, 0.25, 3}), 
-                stay_gains({0.5, 0.5, 4}),
-                g2g_gains({0.5, 0.5, 3}), 
+                sensor_cap(4.8), oa_gains({0.5,0.5}),
+                div_gains({0.25, 0.25}), 
+                stay_gains({0.5, 0.5}),
+                g2g_gains({0.5, 0.5}), 
                 par({100, 75, 1}), 
                 cstate(nav_state)
             {
