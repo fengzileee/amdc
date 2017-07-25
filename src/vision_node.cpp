@@ -324,7 +324,9 @@ int main(int argc, char **argv)
             // in case we aren't getting the frame due to lag
             if (capture_buf++ > 1000)
                 break;
+            continue;
         }
+        capture_buf = 0;
 
         resize(capture, frame, Size(im_w, im_h), 0, 0, CV_INTER_AREA);
 
