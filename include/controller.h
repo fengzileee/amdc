@@ -317,7 +317,7 @@ namespace controller
                 CLOSE_DIST(1), 
                 DIV_SPEED(0.1), OA_SPEED(0.2), 
                 NAV_SPEED(0.2), U_LIMIT(64), 
-                sensor_angles_array({-2.2, -1.2, -0.5, 0., 0.5, 1.2, 2.2}),
+                sensor_angles_array({-2.2689, -1.2217, -0.5236, 0., 0.5236, 1.2217, 2.2689}),
                 sensor_cap(4.8), oa_gains({0.5,0.5}),
                 div_gains({0.25, 0.25}), 
                 stay_gains({0.5, 0.5}),
