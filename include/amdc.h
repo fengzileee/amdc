@@ -7,6 +7,7 @@
 
 #include "geometry_msgs/PointStamped.h"
 #include <nav_msgs/Odometry.h>
+#include <sensor_msgs/Imu.h>
 
 struct PropellerCommand
 {
@@ -55,12 +56,24 @@ public:
         float qy = msg -> pose.pose.orientation.y;
         float qz = msg -> pose.pose.orientation.z;
         float qw = msg -> pose.pose.orientation.w;
-        state(2) = std::atan2(2 * (qw * qz + qx * qy), 
-                1 - 2 * (qy * qy + qz * qz));
+        //state(2) = std::atan2(2 * (qw * qz + qx * qy), 
+                //1 - 2 * (qy * qy + qz * qz));
         // ========== velocity: time derivative of position ============
         state(3) = msg -> twist.twist.linear.x; 
         state(4) = msg -> twist.twist.linear.y; 
         state(5) = msg -> twist.twist.angular.z; 
+    }
+
+    void imuMagFusedCallback(const sensor_msgs::Imu::ConstPtr& msg)
+    {
+        // We use the orientation from fused reading from IMU and magnetometer
+        // instead of the KF node.
+        float qx = msg -> orientation.x;
+        float qy = msg -> orientation.y;
+        float qz = msg -> orientation.z;
+        float qw = msg -> orientation.w;
+        state(2) = std::atan2(2 * (qw * qz + qx * qy), 
+                1 - 2 * (qy * qy + qz * qz));
     }
 
     /**

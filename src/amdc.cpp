@@ -3,6 +3,7 @@
 #include "ros/ros.h"
 #include "ros/console.h"
 #include "std_msgs/Bool.h"
+#include "sensor_msgs/Imu.h"
 
 #include "amdc.h"
 #include "amdc/PropellerCmd.h"
@@ -101,6 +102,9 @@ int main(int argc, char **argv)
 
     ros::Subscriber amdc_goal_sub = nh.subscribe("target_gps_odometry_odom", 
             1, &Amdc::goalCallback, &amdc_s);
+
+    ros::Subscriber imu_mag_fused_sub = nh.subscribe("imu_mag_fused", 
+            1, &Amdc::imuMagFusedCallback, &amdc_s);
 
     ros::Rate loop_rate(10);
     while (ros::ok())
