@@ -13,6 +13,8 @@ find_package(catkin REQUIRED COMPONENTS
   tf2
   tf2_geometry_msgs
   tf2_ros
+  cv_bridge
+  image_transport
   roscpp
   rospy
   sensor_msgs
@@ -26,6 +28,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 find_package (OpenCV REQUIRED)
+find_package (Boost REQUIRED COMPONENTS program_options)
 
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -221,7 +224,13 @@ add_executable(GPS_utm2map_transform_node src/gps_utm2map_transform_node.cpp)
 add_executable(GPS_fix2point_node src/gps_fix2point_node.cpp)
 
 target_link_libraries(amdc ${catkin_LIBRARIES})
-target_link_libraries(vision_node ${OpenCV_LIBS} Threads::Threads libdarknet.a)
+target_link_libraries(vision_node 
+    ${catkin_LIBRARIES} 
+    ${OpenCV_LIBS} 
+    ${Boost_LIBRARIES} 
+    Threads::Threads 
+    libdarknet.a
+)
 target_link_libraries(custom_rosserial ${catkin_LIBRARIES})
 target_link_libraries(GPS_utm2map_transform_node ${catkin_LIBRARIES})
 target_link_libraries(GPS_fix2point_node ${catkin_LIBRARIES})
