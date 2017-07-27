@@ -53,7 +53,9 @@ string cfg_file;
 string weights_file;
 string video_file;
 string save_video_file;
+string save_raw_video_file;
 bool save_video = false;
+bool save_raw_video = false;
 bool visualise = false;
 
 network net;
@@ -67,7 +69,8 @@ void parse_options(int argc, char **argv)
         ("weights,w", po::value<string>(), "darknet weights file")
         ("file,f", po::value<string>(), "source video file (leave empty to use camera)")
         ("visualise,v", "display video with opencv")
-        ("save,s", "save output video");
+        ("save,s", "save output video with detection")
+        ("saveraw,r", "save raw output video");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -122,6 +125,17 @@ void parse_options(int argc, char **argv)
         stringstream ss;
         ss << std::put_time(&tm, "obj_det_%d-%m-%Y_%H-%M-%S.mp4");
         save_video_file = ss.str();
+    }
+
+    if (vm.count("saveraw"))
+    {
+        save_raw_video = true;
+
+        auto t = std::time(nullptr);
+        auto tm = *std::localtime(&t);
+        stringstream ss;
+        ss << std::put_time(&tm, "raw_%d-%m-%Y_%H-%M-%S.mp4");
+        save_raw_video_file = ss.str();
     }
 }
 
@@ -263,7 +277,7 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
 
     VideoCapture cap;
-    VideoWriter output_video;
+    VideoWriter output_video, output_raw_video;
 
     parse_options(argc, argv);
 
@@ -289,16 +303,26 @@ int main(int argc, char **argv)
     {
         output_video.open(save_video_file,
                           VideoWriter::fourcc('X', '2', '6', '4'),
-                          30,
+                          cap.get(CV_CAP_PROP_FPS),
                           cv::Size(im_w, im_h));
         if (!output_video.isOpened())
         {
             cerr << "Cannot open video for writing." << endl;
             exit(-1);
         }
-        else
+    }
+
+    if (save_raw_video)
+    {
+        output_raw_video.open(save_raw_video_file,
+                          VideoWriter::fourcc('X', '2', '6', '4'),
+                          cap.get(CV_CAP_PROP_FPS),
+                          cv::Size(cap.get(CV_CAP_PROP_FRAME_WIDTH),
+                                   cap.get(CV_CAP_PROP_FRAME_HEIGHT)));
+        if (!output_raw_video.isOpened())
         {
-            cout << "Saving video to " << save_video_file << endl;
+            cerr << "Cannot open raw video for writing." << endl;
+            exit(-1);
         }
     }
 
@@ -313,12 +337,20 @@ int main(int argc, char **argv)
     if (visualise)
         namedWindow("predictions", WINDOW_NORMAL);
 
+    int capture_buf = 0;
     while (ros::ok())
     {
         Mat capture, original, frame;
 
         if (!cap.read(capture))
-            break;
+        {
+            // XXX
+            // in case we aren't getting the frame due to lag
+            if (capture_buf++ > 1000)
+                break;
+            continue;
+        }
+        capture_buf = 0;
 
         resize(capture, frame, Size(im_w, im_h), 0, 0, CV_INTER_AREA);
 
@@ -365,6 +397,8 @@ int main(int argc, char **argv)
             imshow("predictions", frame);
         if (save_video)
             output_video << frame;
+        if (save_raw_video)
+            output_raw_video << capture;
         if(waitKey(1) == 27)
             break;
     }

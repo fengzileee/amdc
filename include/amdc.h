@@ -5,8 +5,10 @@
 #include <Eigen/Dense>
 #include <cmath>
 
+#include "geometry_msgs/PointStamped.h"
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Point.h>
+#include <sensor_msgs/Imu.h>
 
 struct PropellerCommand
 {
@@ -55,19 +57,43 @@ public:
         float qy = msg -> pose.pose.orientation.y;
         float qz = msg -> pose.pose.orientation.z;
         float qw = msg -> pose.pose.orientation.w;
-        state(2) = std::atan2(2 * (qw * qz + qx * qy), 
-                1 - 2 * (qy * qy + qz * qz));
+        //state(2) = std::atan2(2 * (qw * qz + qx * qy), 
+                //1 - 2 * (qy * qy + qz * qz));
         // ========== velocity: time derivative of position ============
         state(3) = msg -> twist.twist.linear.x; 
         state(4) = msg -> twist.twist.linear.y; 
         state(5) = msg -> twist.twist.angular.z; 
     }
 
-    void vision_callback(const geometry_msgs::Point::ConstPtr& msg)
+    void visionCallback(const geometry_msgs::Point::ConstPtr& msg)
     {
         ROS_ASSERT(msg->x >= 0 && msg->y >= 0);
-        amdc_s.debris_coord(0) = msg->x;
-        amdc_s.debris_coord(1) = msg->y;
+        debris_coord(0) = msg->x;
+        debris_coord(1) = msg->y;
+    }
+
+    void imuMagFusedCallback(const sensor_msgs::Imu::ConstPtr& msg)
+    {
+        // We use the orientation from fused reading from IMU and magnetometer
+        // instead of the KF node.
+        float qx = msg -> orientation.x;
+        float qy = msg -> orientation.y;
+        float qz = msg -> orientation.z;
+        float qw = msg -> orientation.w;
+        state(2) = std::atan2(2 * (qw * qz + qx * qy), 
+                1 - 2 * (qy * qy + qz * qz));
+    }
+
+    /**
+     * Callback function that adds a new goal that was published on 
+     * /target_gps_odometry_odom.
+     * \param in   ROS PointStamped message
+     */
+    void goalCallback(const geometry_msgs::PointStamped::ConstPtr& msg)
+    {
+        Eigen::VectorXf goal(2);
+        goal << msg->point.x, msg->point.y;
+        goals.push(goal);
     }
 
 };

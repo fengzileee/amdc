@@ -221,7 +221,7 @@ class gps_handler
     void advertise(ros::NodeHandle nh)
     {
       pub = nh.advertise<sensor_msgs::NavSatFix>("gps_data", 1000);
-      gps_msg.header.frame_id = "map";
+      gps_msg.header.frame_id = "gps_frame";
     }
 
     void subscribe(ros::NodeHandle nh)
@@ -253,6 +253,10 @@ void gps_handler::callback(const std_msgs::Int32MultiArray::ConstPtr& msg)
 void gps_handler::process_sensor_msg(void *buffer)
 {
   int *msg = (int *)buffer;
+
+  // Only publish legit fix (i.e. when status == 0)
+  if (msg[3] != 0) return;
+
   gps_msg.latitude = msg[0] / 10000000.; 
   gps_msg.longitude = msg[1] / 10000000.;
   gps_msg.altitude =  msg[2] / 100.;
@@ -267,7 +271,7 @@ void gps_handler::process_sensor_msg(void *buffer)
       << gps_msg.status.service);
 
   gps_msg.header.stamp = ros::Time::now();
-  gps_msg.header.frame_id = "map";
+  gps_msg.header.frame_id = "gps_frame";
   pub.publish(gps_msg);
 }
 

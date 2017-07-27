@@ -172,7 +172,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "custom_rosserial");
     ros::NodeHandle nh;
 
-    begin_serial(argv[1], 5); // timeout of 5s
+    begin_serial(argv[1], 1); // timeout of 1s
 
     init_ultrasonic(nh);
     init_imu(nh);
@@ -189,10 +189,22 @@ int main(int argc, char **argv)
             ROS_WARN_STREAM("received " << recv
                     << " bytes. buffer getting full");
         }
+        else if (recv == 0)
+        {
+            ROS_WARN_STREAM("read from serial timeout");
+        }
         process_serial_data(buf, recv);
         ros::spinOnce();
         send_propeller_command();
     }
+
+    // stop propeller before shutdown
+    propeller.update = true;
+    propeller.out_msg.left_pwm = 0;
+    propeller.out_msg.right_pwm = 0;
+    propeller.out_msg.left_enable = 0;
+    propeller.out_msg.right_enable = 0;
+    send_propeller_command();
 
     return 0;
 }

@@ -3,6 +3,7 @@
 #include "ros/ros.h"
 #include "ros/console.h"
 #include "std_msgs/Bool.h"
+#include "sensor_msgs/Imu.h"
 
 #include "amdc.h"
 #include "amdc/PropellerCmd.h"
@@ -56,7 +57,7 @@ void init_remote_controller(ros::NodeHandle nh)
 void init_vision(ros::NodeHandle nh)
 {
     vision_subscriber = nh.subscribe("debris_coord", 1, 
-            &Amdc::vision_callback, &amdc_s);
+            &Amdc::visionCallback, &amdc_s);
 }
 
 void init_propeller(ros::NodeHandle nh)
@@ -89,10 +90,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "computer_node");
     ros::NodeHandle nh;
 
-    //XXX XXX
-    Eigen::VectorXf goal(2);
-    goal << 10, 0;
-    amdc_s.goals.push(goal);
+    // initialise amdc states
     amdc_s.state << 0,0,0,0,0,0;
     amdc_s.range << 6,6,6,6,6,6,6;
 
@@ -105,6 +103,12 @@ int main(int argc, char **argv)
 
     ros::Subscriber amdc_state_update_sub = nh.subscribe("odometry_gps", 
             1, &Amdc::stateUpdateCallback, &amdc_s);
+
+    ros::Subscriber amdc_goal_sub = nh.subscribe("target_gps_odometry_odom", 
+            1, &Amdc::goalCallback, &amdc_s);
+
+    ros::Subscriber imu_mag_fused_sub = nh.subscribe("imu_mag_fused", 
+            1, &Amdc::imuMagFusedCallback, &amdc_s);
 
     ros::Rate loop_rate(10);
     while (ros::ok())

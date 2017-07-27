@@ -11,7 +11,7 @@ using namespace Eigen;
 using namespace controller;
 
 // squared distance in which we consider pose is near goal
-static const float dist_eps = 0.2;
+static const float dist_eps = 0.5;
 
 // conversion factor from force to pwm
 static const float force2pwm = 230;
@@ -52,8 +52,9 @@ enum sm_states idle()
 static void update_propeller()
 {
     VectorXf cmd, cmd_pwm;
-    cmd = nav_controller(amdc_s.state, amdc_s.goals.front(), amdc_s.range);
-    cmd_pwm = u2pwm(cmd);
+    static Controller controller;
+    cmd = controller.compute_u(amdc_s.state, amdc_s.goals.front(), amdc_s.range);
+    cmd_pwm = controller.u2pwm(cmd);
 
     amdc_s.propeller_cmd.left_spd = cmd_pwm(0);
     amdc_s.propeller_cmd.right_spd = cmd_pwm(1);
@@ -62,7 +63,7 @@ static void update_propeller()
 
 static float dist_between(const VectorXf& x, const VectorXf& y)
 {
-    return (x - y).squaredNorm();
+    return (x - y).norm();
 }
 
 enum sm_states go2goal()
@@ -107,11 +108,10 @@ std::string state2name[] =
 
 void update_state_machine()
 {
-    // XXX XXX
-    ROS_INFO_STREAM("sm " << state2name[state]);
-    ROS_INFO_STREAM("state\n" << amdc_s.state);
-    ROS_INFO_STREAM("range\n" << amdc_s.range);
-    ROS_INFO_STREAM("ref\n" << amdc_s.goals.front());
+    ROS_DEBUG_STREAM("sm " << state2name[state]);
+    ROS_DEBUG_STREAM("state\n" << amdc_s.state);
+    ROS_DEBUG_STREAM("range\n" << amdc_s.range);
+    ROS_DEBUG_STREAM("ref\n" << amdc_s.goals.front());
 
     state = sm_func[state]();
 }
