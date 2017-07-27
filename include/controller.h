@@ -7,8 +7,8 @@
 
 namespace controller
 {
-
     using namespace Eigen;
+    using namespace std;
 
     enum controller_state 
     {
@@ -41,7 +41,14 @@ namespace controller
         */
         VectorXf detX, detY; 
         VectorXf ahead, all, ahead_unit, all_unit;
-        float ang, ahead_ang, aheadX, aheadY, detX_sum, detY_sum;
+        VectorXf ema, raw_ema;
+        float ang, ahead_ang, aheadX, aheadY, detX_sum, detY_sum, min;
+    };
+
+    struct goal_perception
+    {
+        VectorXf vec, vec_unit, l_vec, l_vec_unit; 
+        float ang, vnorm;
     };
 
     class Controller
@@ -51,7 +58,7 @@ namespace controller
             const double PI;
 
             // ============== parameters ===============
-            const float ARRIVE_RANGE,
+            float ARRIVE_RANGE,
                   BOUNDARY_FOLLOWING_THRESH,
                   RUN_AWAY_THRESH,
                   STATE_SWITCH_BUFFER,
@@ -59,42 +66,58 @@ namespace controller
                   DIV_SPEED, 
                   OA_SPEED,
                   NAV_SPEED,
-                  U_LIMIT;
+                  U_LIMIT,
+                  EMA_K,
+                  GOAL_P;
 
             VectorXf sensor_angles; 
             VectorXf obstacle_sensor_scale;
             const float sensor_angles_array[7];
             const float sensor_cap;
-            const gains oa_gains;
-            const gains div_gains;
-            const gains stay_gains;
-            const gains g2g_gains;
+            gains oa_gains;
+            gains div_gains;
+            gains stay_gains;
+            gains g2g_gains;
             robot_parameter par;
 
             // ============== states (robot and environment) ===============
             obstacle_perception operc; 
+            goal_perception gperc;
             controller_state cstate;
 
             // ======================================
             float atan2_angle(float theta)
             {
-                return std::atan2(std::sin(theta), std::cos(theta));
+                return atan2(sin(theta), cos(theta));
             }
 
-            static Matrix2f global2local(const float& theta)
+            Matrix2f rotation(const float& theta)
             {
                 static float T11, T12, T21, T22;
-                T11 = std::cos(theta);
-                T12 = std::sin(theta);
-                T21 = - std::sin(theta);
-                T22 = std::cos(theta);
+                T11 = cos(theta);
+                T12 = -sin(theta);
+                T21 = sin(theta);
+                T22 = cos(theta); 
+                Matrix2f T; 
+                T << T11, T12, 
+                  T21, T22;
+                return T;
+            }
+
+            Matrix2f global2local(const float& theta)
+            {
+                static float T11, T12, T21, T22;
+                T11 = cos(theta);
+                T12 = sin(theta);
+                T21 = - sin(theta);
+                T22 = cos(theta);
                 Matrix2f T;
                 T <<  T11, T12, 
                   T21, T22;
                 return T;
             }
 
-            static VectorXf global2local_v(const VectorXf& state)
+            VectorXf global2local_v(const VectorXf& state)
             {
                 VectorXf global_v = state.segment(3, 2);
                 Matrix2f T = global2local(state(2));
@@ -105,21 +128,48 @@ namespace controller
             void update_obstacle_perception(VectorXf& state, 
                     VectorXf& point_sensor_readings)
             {
-                operc.detX = point_sensor_readings.array() * sensor_angles.array().cos();
-                operc.detY = point_sensor_readings.array() * sensor_angles.array().sin();
+                for (int it = 0; it < 7; it ++)
+                {
+                    if (operc.raw_ema(it) >= point_sensor_readings(it))
+                        operc.raw_ema(it) = point_sensor_readings(it);
+                    else
+                        operc.raw_ema(it) =EMA_K * operc.raw_ema(it) + (1 - EMA_K) * 
+                            point_sensor_readings(it); 
+                }
+
+                operc.min = operc.raw_ema.minCoeff(); 
+
+                operc.ema = (operc.raw_ema.array() > sensor_cap)
+                    .select(0, sensor_cap - operc.raw_ema.array());
+
+                operc.detX = operc.ema.array() * sensor_angles.array().cos();
+                operc.detY = operc.ema.array() * sensor_angles.array().sin();
                 operc.detX_sum = operc.detX.array().sum();
                 operc.detY_sum = operc.detY.array().sum();
                 operc.all(0) = operc.detX_sum;
                 operc.all(1) = operc.detY_sum;
                 operc.all_unit = operc.ahead.array() / operc.ahead.norm();
-                operc.ang = std::atan2(operc.detY_sum, operc.detX_sum);
+                operc.ang = atan2(operc.detY_sum, operc.detX_sum);
 
                 operc.aheadX = (operc.detX.array() * obstacle_sensor_scale.array()).sum();
                 operc.aheadY = (operc.detY.array() * obstacle_sensor_scale.array()).sum();
                 operc.ahead(0) = operc.aheadX;
                 operc.ahead(1) = operc.aheadY;
                 operc.ahead_unit = operc.ahead.array() / operc.ahead.norm();
-                operc.ahead_ang = std::atan2(operc.aheadY, operc.aheadX);
+                operc.ahead_ang = atan2(operc.aheadY, operc.aheadX);
+
+            }
+
+            void update_goal_perception(VectorXf& state, 
+                    VectorXf& ref)
+            {
+                gperc.vec = ref - state.head(2);
+                gperc.vec_unit = gperc.vec.array() / gperc.vec.norm(); 
+                gperc.ang = atan2(gperc.vec_unit(1), gperc.vec_unit(0)) - state(2);
+                gperc.vnorm = gperc.vec.norm();
+                Matrix2f T = global2local(state(2));
+                gperc.l_vec = T * gperc.vec;
+                gperc.l_vec_unit = T * gperc.vec_unit;
             }
 
             void control_input_cap(VectorXf& u)
@@ -150,19 +200,16 @@ namespace controller
                 return u;
             }
 
-            VectorXf run_away(VectorXf& state, 
-                    VectorXf& point_sensor_readings)
+            VectorXf run_away(VectorXf& state)
             {
-                update_obstacle_perception(state, point_sensor_readings);
-
                 float heading_err, heading_err_inv;
-                float& dheading_err = state(5);
+                float dheading_err = state(5);
                 heading_err = operc.ang;
                 heading_err_inv = heading_err + PI; 
                 heading_err_inv = atan2_angle(heading_err_inv); 
 
                 float v_d, omega_d;
-                if (std::cos(heading_err) > 0) 
+                if (cos(heading_err) > 0) 
                 {
                     v_d = -OA_SPEED;
                     omega_d = oa_gains.p * heading_err + oa_gains.d * dheading_err;
@@ -176,47 +223,52 @@ namespace controller
                 return vw2u(state, v_d, omega_d);
             }
 
-            VectorXf divert(VectorXf& state, 
-                    VectorXf& point_sensor_readings)
+            VectorXf divert(VectorXf& state)
             {
-                update_obstacle_perception(state, point_sensor_readings);
-
-                float heading_err;
-                // decide the control input
+                // local heading vector computed using sensor info
+                VectorXf heading_div(2);
                 if (operc.ahead_unit.dot(operc.all_unit) > 0.86)
                 {
                     if (operc.ahead_ang > 0)
-                        heading_err = operc.ahead_ang - PI / 2;
+                        heading_div = rotation(-PI/2) * operc.ahead_unit;
                     else 
-                        heading_err = operc.ahead_ang + PI / 2;
+                        heading_div = rotation(PI/2) * operc.ahead_unit;
                 }
                 else
-                    heading_err = - operc.ahead_ang;
+                {
+                    heading_div(0) = operc.ahead_unit(0);
+                    heading_div(1) = -operc.ahead_unit(1);
+                }
 
-                heading_err = atan2_angle(heading_err); 
-                float dheading_err = state(5); 
+                // blending. vectors all in lcoal frame.
+                if (gperc.l_vec_unit.dot(operc.all_unit) >= 0)
+                {
+                    VectorXf heading_d = gperc.l_vec_unit * GOAL_P 
+                        + heading_div * (1 - GOAL_P); 
+                    float heading_d_ang = atan2(heading_d(1), heading_d(0)); 
 
-                float v_d = DIV_SPEED; 
-                float omega_d = div_gains.p * heading_err + div_gains.d * dheading_err; 
+                    float heading_err;
+                    heading_err = heading_d_ang - state(2); 
+                    heading_err = atan2_angle(heading_err);
+                    float dheading_err = state(5);
 
-                return vw2u(state, v_d, omega_d);
+                    float v_d = DIV_SPEED; 
+                    float omega_d = div_gains.p * heading_err + div_gains.d * dheading_err; 
+
+                    return vw2u(state, v_d, omega_d);
+                }
+                else
+                    return go2goal(state);
             }
 
-            VectorXf stayATgoal(VectorXf& state, 
-                    VectorXf& ref)
+            VectorXf stayATgoal(VectorXf& state) 
             {
-                VectorXf x = state.head(2);
-                VectorXf goal_vector = ref - x;
-
-                float heading_d = std::atan2(goal_vector(1), goal_vector(0)); 
-                float heading_err; 
-                heading_err = heading_d - state(2);
-                heading_err = atan2_angle(heading_err);
+                float heading_err = gperc.ang;
                 float dheading_err = state(5); 
-                float v_d = goal_vector.norm() < CLOSE_DIST ? 
-                    NAV_SPEED * goal_vector.norm() / CLOSE_DIST : NAV_SPEED;
+                float v_d = gperc.vnorm < CLOSE_DIST ? 
+                    NAV_SPEED * gperc.vnorm / CLOSE_DIST : NAV_SPEED;
                 float omega_d;
-                if (std::cos(heading_err > 0))
+                if (cos(heading_err < 0))
                 {
                     float heading_err_inv = heading_err + PI; 
                     heading_err_inv = atan2_angle(heading_err_inv);
@@ -231,19 +283,12 @@ namespace controller
                 return u;
             }
 
-            VectorXf go2goal(VectorXf& state, 
-                    VectorXf& ref)
+            VectorXf go2goal(VectorXf& state)
             {
-                VectorXf x = state.head(2);
-                VectorXf goal_vector = ref - x;
-
-                float heading_d = std::atan2(goal_vector(1), goal_vector(0)); 
-                float heading_err; 
-                heading_err = heading_d - state(2); 
-                heading_err = atan2_angle(heading_err);
+                float heading_err = gperc.ang; 
                 float dheading_err = state(5); 
-                float v_d = goal_vector.norm() < CLOSE_DIST ? 
-                    NAV_SPEED * goal_vector.norm() / CLOSE_DIST : NAV_SPEED;
+                float v_d = gperc.vec.norm() < CLOSE_DIST ? 
+                    NAV_SPEED * gperc.vec.norm() / CLOSE_DIST : NAV_SPEED;
                 float omega_d;
                 omega_d = g2g_gains.p * heading_err + g2g_gains.d * dheading_err;
 
@@ -255,45 +300,39 @@ namespace controller
 
         public:
 
-            VectorXf compute_u(VectorXf& state, 
-                    VectorXf& ref, VectorXf point_sensor_readings)
+            VectorXf compute_u(VectorXf state, 
+                    VectorXf ref, VectorXf point_sensor_readings)
             { 
-
                 VectorXf u;
-                VectorXf x = state.head(2);
-                VectorXf goal_vector = ref - x;
 
-                float min_point_sensor_reading = point_sensor_readings.minCoeff(); 
+                // update robot's perception
+                update_obstacle_perception(state, point_sensor_readings);
+                update_goal_perception(state, ref);
 
-                point_sensor_readings = (point_sensor_readings.array() > sensor_cap)
-                    .select(0, sensor_cap - point_sensor_readings.array());
-
-                if (goal_vector.norm() < ARRIVE_RANGE)
+                if (gperc.vnorm < ARRIVE_RANGE)
                     cstate = stay_state; 
-                else if (min_point_sensor_reading < RUN_AWAY_THRESH - STATE_SWITCH_BUFFER) 
+                else if (operc.min < RUN_AWAY_THRESH - STATE_SWITCH_BUFFER) 
                     cstate = oa_state;
                 else if (RUN_AWAY_THRESH + STATE_SWITCH_BUFFER <= 
-                        min_point_sensor_reading)
+                        operc.min)
                 {
-                    if (min_point_sensor_reading < BOUNDARY_FOLLOWING_THRESH - 
+                    if (operc.min < BOUNDARY_FOLLOWING_THRESH - 
                             STATE_SWITCH_BUFFER)
                         cstate = div_state; 
                     else if (BOUNDARY_FOLLOWING_THRESH + 
-                            STATE_SWITCH_BUFFER <= min_point_sensor_reading) 
+                            STATE_SWITCH_BUFFER <= operc.min) 
                         cstate = nav_state; 
                 }
 
-
                 if (cstate == oa_state)
-                    u = run_away(state, point_sensor_readings);
+                    u = run_away(state);
                 else if (cstate == div_state)
-                    u = divert(state, point_sensor_readings);
+                    u = divert(state);
                 else if (cstate == stay_state)
-                    u = stayATgoal(state, ref);
+                    u = stayATgoal(state);
                 else if (cstate == nav_state)
-                    u = go2goal(state, ref);
+                    u = go2goal(state);
 
-                std::cout << cstate << std::endl;
                 return u;
             }
 
@@ -312,31 +351,113 @@ namespace controller
                 PI(3.1415926535897931), 
                 ARRIVE_RANGE(0.5),
                 BOUNDARY_FOLLOWING_THRESH(4), 
-                RUN_AWAY_THRESH(2.75), 
-                STATE_SWITCH_BUFFER(0.5), 
+                RUN_AWAY_THRESH(1.5), 
+                STATE_SWITCH_BUFFER(0.25), 
                 CLOSE_DIST(1), 
                 DIV_SPEED(0.1), OA_SPEED(0.2), 
                 NAV_SPEED(0.2), U_LIMIT(64), 
-                sensor_angles_array({-2.2689, -1.2217, -0.5236, 0., 0.5236, 1.2217, 2.2689}),
+                sensor_angles_array({2.2689, 1.2217, 0.5236, 0., -0.5236, -1.2217, -2.2689}),
                 sensor_cap(4.8), oa_gains({0.5,0.5}),
                 div_gains({0.25, 0.25}), 
                 stay_gains({0.5, 0.5}),
                 g2g_gains({0.5, 0.5}), 
                 par({100, 75, 1}), 
+                EMA_K(0.99),
+                GOAL_P(0.25),
                 cstate(nav_state)
             {
                 sensor_angles.resize(7);
+                operc.raw_ema.resize(7);
+                operc.ema.resize(7);
                 for (int it = 0; it < 7; it ++)
+                {
+                    operc.raw_ema(it) = 5;
                     sensor_angles(it) = sensor_angles_array[it];
+                }
+
                 obstacle_sensor_scale.resize(7); 
                 obstacle_sensor_scale = sensor_angles.array().cos().matrix();
+
                 operc.all.resize(2);
                 operc.all_unit.resize(2);
                 operc.ahead.resize(2);
                 operc.ahead_unit.resize(2);
+
+                gperc.vec.resize(2);
+                gperc.vec_unit.resize(2);
+                gperc.l_vec.resize(2);
+                gperc.l_vec_unit.resize(2);
+            }
+    };
+
+    class Controller_VS: public Controller 
+    {
+        protected: 
+            VectorXf collect_point, old_goal_vec;
+            gains vsx_gains, vsy_gains;
+
+            void frame_trans(VectorXf& coord)
+            {
+                float x = -coord(1) + 1;
+                float y = -coord(0) + 1;
+                coord(0) = x;
+                coord(1) = y;
             }
 
+            VectorXf go2goal(VectorXf& state, VectorXf& coord)
+            {
+                frame_trans(coord);
+                VectorXf goal_vec = coord - collect_point; 
 
+                float v_d = vsx_gains.p * goal_vec(0)  
+                    + vsx_gains.d * (goal_vec(0) - old_goal_vec(0)); 
+                float omega_d = vsy_gains.p * goal_vec(1)  
+                    + vsy_gains.d * (goal_vec(1) - old_goal_vec(1)); 
+
+                old_goal_vec = goal_vec;
+
+                return vw2u(state, v_d, omega_d);
+            }
+
+        public:
+            VectorXf compute_u(VectorXf state, 
+                    VectorXf coord, VectorXf point_sensor_readings)
+            {
+                VectorXf u;
+
+                update_obstacle_perception(state, point_sensor_readings);
+                
+                if (operc.min < RUN_AWAY_THRESH - STATE_SWITCH_BUFFER)
+                    cstate = oa_state;
+                else
+                    cstate = nav_state;
+
+                if (cstate == oa_state)
+                    u = run_away(state);
+                else if (cstate == nav_state)
+                    u = go2goal(state, coord);
+            }
+
+            Controller_VS(): Controller()
+            {
+                collect_point.resize(2); 
+                collect_point(0) = 0.5;
+                collect_point(1) = 0.5;
+
+                vsx_gains.p = 0.1;
+                vsx_gains.d = 0.1;
+                vsy_gains.p = 0.1;
+                vsy_gains.d = 0.1;
+
+                old_goal_vec.resize(2);
+                old_goal_vec(0) = 0;
+                old_goal_vec(1) = 0;
+
+                NAV_SPEED = 0.2;
+                OA_SPEED = 0.3; 
+                RUN_AWAY_THRESH = 0.75;
+                STATE_SWITCH_BUFFER = 0.25;
+            }
     };
 
 }
