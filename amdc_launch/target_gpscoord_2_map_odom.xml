@@ -1,6 +1,6 @@
 <launch>
     <node pkg="gps_common" type="utm_odometry_node" name="ref_utm_odometry_node">
-    <remap from="fix" to="target_gps_fix"/>
+    <remap from="fix" to="gps_data"/>
     <remap from="odom" to="target_gps_odometry_utm"/>
     <param name="frame_id" value="utm"/>
     </node>
