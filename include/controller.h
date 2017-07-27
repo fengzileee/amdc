@@ -45,6 +45,12 @@ namespace controller
         float ang, ahead_ang, aheadX, aheadY, detX_sum, detY_sum, min;
     };
 
+    struct goal_perception
+    {
+        VectorXf vec, vec_unit; 
+        float ang, vnorm;
+    };
+
     class Controller
     {
 
@@ -75,6 +81,7 @@ namespace controller
 
             // ============== states (robot and environment) ===============
             obstacle_perception operc; 
+            goal_perception gperc;
             controller_state cstate;
 
             // ======================================
@@ -137,6 +144,15 @@ namespace controller
                 operc.ahead_unit = operc.ahead.array() / operc.ahead.norm();
                 operc.ahead_ang = atan2(operc.aheadY, operc.aheadX);
 
+            }
+
+            void update_goal_perception(VectorXf& state, 
+                    VectorXf& ref)
+            {
+                gperc.vec = ref - state.head(2);
+                gperc.vec_unit = gperc.vec.array() / gperc.vec.norm(); 
+                gperc.ang = atan2(gperc.vec_unit(1), gperc.vec_unit(0)) - state(2);
+                gperc.vnorm = gperc.vec.norm();
             }
 
             void control_input_cap(VectorXf& u)
@@ -216,18 +232,12 @@ namespace controller
             VectorXf stayATgoal(VectorXf& state, 
                     VectorXf& ref)
             {
-                VectorXf x = state.head(2);
-                VectorXf goal_vector = ref - x;
-
-                float heading_d = atan2(goal_vector(1), goal_vector(0)); 
-                float heading_err; 
-                heading_err = heading_d - state(2);
-                heading_err = atan2_angle(heading_err);
+                float heading_err = gperc.ang;
                 float dheading_err = state(5); 
-                float v_d = goal_vector.norm() < CLOSE_DIST ? 
-                    NAV_SPEED * goal_vector.norm() / CLOSE_DIST : NAV_SPEED;
+                float v_d = gperc.vnorm < CLOSE_DIST ? 
+                    NAV_SPEED * gperc.vnorm / CLOSE_DIST : NAV_SPEED;
                 float omega_d;
-                if (cos(heading_err > 0))
+                if (cos(heading_err < 0))
                 {
                     float heading_err_inv = heading_err + PI; 
                     heading_err_inv = atan2_angle(heading_err_inv);
@@ -245,16 +255,10 @@ namespace controller
             VectorXf go2goal(VectorXf& state, 
                     VectorXf& ref)
             {
-                VectorXf x = state.head(2);
-                VectorXf goal_vector = ref - x;
-
-                float heading_d = atan2(goal_vector(1), goal_vector(0)); 
-                float heading_err; 
-                heading_err = heading_d - state(2); 
-                heading_err = atan2_angle(heading_err);
+                float heading_err = gperc.ang; 
                 float dheading_err = state(5); 
-                float v_d = goal_vector.norm() < CLOSE_DIST ? 
-                    NAV_SPEED * goal_vector.norm() / CLOSE_DIST : NAV_SPEED;
+                float v_d = gperc.vec.norm() < CLOSE_DIST ? 
+                    NAV_SPEED * gperc.vec.norm() / CLOSE_DIST : NAV_SPEED;
                 float omega_d;
                 omega_d = g2g_gains.p * heading_err + g2g_gains.d * dheading_err;
 
@@ -270,13 +274,12 @@ namespace controller
                     VectorXf ref, VectorXf point_sensor_readings)
             { 
                 VectorXf u;
-                VectorXf x = state.head(2);
-                VectorXf goal_vector = ref - x;
 
                 // update robot's perception
                 update_obstacle_perception(state, point_sensor_readings);
+                update_goal_perception(state, ref);
 
-                if (goal_vector.norm() < ARRIVE_RANGE)
+                if (gperc.vnorm < ARRIVE_RANGE)
                     cstate = stay_state; 
                 else if (operc.min < RUN_AWAY_THRESH - STATE_SWITCH_BUFFER) 
                     cstate = oa_state;
@@ -344,10 +347,14 @@ namespace controller
 
                 obstacle_sensor_scale.resize(7); 
                 obstacle_sensor_scale = sensor_angles.array().cos().matrix();
+
                 operc.all.resize(2);
                 operc.all_unit.resize(2);
                 operc.ahead.resize(2);
                 operc.ahead_unit.resize(2);
+
+                gperc.vec.resize(2);
+                gperc.vec_unit.resize(2);
             }
 
 
