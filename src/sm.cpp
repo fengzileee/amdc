@@ -26,18 +26,21 @@ enum sm_states
     sm_idle,
     sm_go2goal,
     sm_find_debris,
+    sm_go2debris,
     sm_invalid
 };
 
 enum sm_states idle();
 enum sm_states go2goal();
 enum sm_states find_debris();
+enum sm_states go2debris();
 
-enum sm_states (*sm_func[3])() =
+enum sm_states (*sm_func[4])() =
 {
     idle,
     go2goal,
-    find_debris
+    find_debris,
+    go2debris
 };
 
 static enum sm_states state = sm_idle;
@@ -91,6 +94,9 @@ enum sm_states find_debris()
 
     update_propeller();
 
+    if (amdc_s.debris_coord.size() > 0)
+        return sm_go2debris;
+
     dist = dist_between(amdc_s.state.head(2), amdc_s.goals.front());
     if (dist < dist_eps)
         amdc_s.goals.pop();
@@ -98,11 +104,17 @@ enum sm_states find_debris()
     return sm_find_debris;
 }
 
+enum sm_states go2debris()
+{
+    return sm_go2debris;
+}
+
 std::string state2name[] =
 {
     "sm_idle",
     "sm_go2goal",
     "sm_find_debris",
+    "sm_go2debris",
     "sm_invalid"
 };
 
