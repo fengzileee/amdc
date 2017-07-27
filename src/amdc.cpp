@@ -19,6 +19,8 @@ amdc::PropellerCmd propeller_msg;
 ros::Subscriber rc_cond;
 ros::Subscriber rc_cmd;
 
+ros::Subscriber vision_subscriber;
+
 void init_ultrasonic(ros::NodeHandle nh)
 {
     for (int i = 0; i < 7; ++i)
@@ -45,14 +47,16 @@ void rc_propeller_cmd_callback(const amdc::PropellerCmd& msg)
 
 void init_remote_controller(ros::NodeHandle nh)
 {
-    rc_cond = nh.subscribe("remote_controlled", 1000, remote_controlled_callback);
-    rc_cmd = nh.subscribe("rc_propeller_cmd", 1000, rc_propeller_cmd_callback);
+    rc_cond = nh.subscribe("remote_controlled", 1, 
+            remote_controlled_callback);
+    rc_cmd = nh.subscribe("rc_propeller_cmd", 1, 
+            rc_propeller_cmd_callback);
 }
 
 void init_vision(ros::NodeHandle nh)
 {
-    // TODO
-    // add subscriber here
+    vision_subscriber = nh.subscribe("debris_coord", 1, 
+            &Amdc::vision_callback, &amdc_s);
 }
 
 void init_propeller(ros::NodeHandle nh)

@@ -6,6 +6,7 @@
 #include <cmath>
 
 #include <nav_msgs/Odometry.h>
+#include <geometry_msgs/Point.h>
 
 struct PropellerCommand
 {
@@ -60,6 +61,13 @@ public:
         state(3) = msg -> twist.twist.linear.x; 
         state(4) = msg -> twist.twist.linear.y; 
         state(5) = msg -> twist.twist.angular.z; 
+    }
+
+    void vision_callback(const geometry_msgs::Point::ConstPtr& msg)
+    {
+        ROS_ASSERT(msg->x >= 0 && msg->y >= 0);
+        amdc_s.debris_coord(0) = msg->x;
+        amdc_s.debris_coord(1) = msg->y;
     }
 
 };
