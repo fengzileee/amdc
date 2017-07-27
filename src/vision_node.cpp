@@ -349,8 +349,12 @@ int main(int argc, char **argv)
         for (auto bbox : merged_bbox)
             rectangle(frame, bbox, green_colour, 3);
 
-        set_nearest_debris(merged_bbox, coord_msg);
-        coord_pub.publish(coord_msg);
+        // publish debris coord if detected
+        if (merged_bbox.size() > 0)
+        {
+            set_nearest_debris(merged_bbox, coord_msg);
+            coord_pub.publish(coord_msg);
+        }
 
         // publish image as ros msg
         msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", frame).toImageMsg();
