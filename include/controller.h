@@ -58,7 +58,7 @@ namespace controller
             const double PI;
 
             // ============== parameters ===============
-            const float ARRIVE_RANGE,
+            float ARRIVE_RANGE,
                   BOUNDARY_FOLLOWING_THRESH,
                   RUN_AWAY_THRESH,
                   STATE_SWITCH_BUFFER,
@@ -74,10 +74,10 @@ namespace controller
             VectorXf obstacle_sensor_scale;
             const float sensor_angles_array[7];
             const float sensor_cap;
-            const gains oa_gains;
-            const gains div_gains;
-            const gains stay_gains;
-            const gains g2g_gains;
+            gains oa_gains;
+            gains div_gains;
+            gains stay_gains;
+            gains g2g_gains;
             robot_parameter par;
 
             // ============== states (robot and environment) ===============
@@ -300,7 +300,7 @@ namespace controller
 
         public:
 
-            VectorXf compute_u(VectorXf& state, 
+            VectorXf compute_u(VectorXf state, 
                     VectorXf ref, VectorXf point_sensor_readings)
             { 
                 VectorXf u;
@@ -323,8 +323,6 @@ namespace controller
                             STATE_SWITCH_BUFFER <= operc.min) 
                         cstate = nav_state; 
                 }
-                cout << cstate << endl;
-
 
                 if (cstate == oa_state)
                     u = run_away(state);
@@ -390,8 +388,76 @@ namespace controller
                 gperc.l_vec.resize(2);
                 gperc.l_vec_unit.resize(2);
             }
+    };
 
+    class Controller_VS: public Controller 
+    {
+        protected: 
+            VectorXf collect_point, old_goal_vec;
+            gains vsx_gains, vsy_gains;
 
+            void frame_trans(VectorXf& coord)
+            {
+                float x = -coord(1) + 1;
+                float y = -coord(0) + 1;
+                coord(0) = x;
+                coord(1) = y;
+            }
+
+            VectorXf go2goal(VectorXf& state, VectorXf& coord)
+            {
+                frame_trans(coord);
+                VectorXf goal_vec = coord - collect_point; 
+
+                float v_d = vsx_gains.p * goal_vec(0)  
+                    + vsx_gains.d * (goal_vec(0) - old_goal_vec(0)); 
+                float omega_d = vsy_gains.p * goal_vec(1)  
+                    + vsy_gains.d * (goal_vec(1) - old_goal_vec(1)); 
+
+                old_goal_vec = goal_vec;
+
+                return vw2u(state, v_d, omega_d);
+            }
+
+        public:
+            VectorXf compute_u(VectorXf state, 
+                    VectorXf coord, VectorXf point_sensor_readings)
+            {
+                VectorXf u;
+
+                update_obstacle_perception(state, point_sensor_readings);
+                
+                if (operc.min < RUN_AWAY_THRESH - STATE_SWITCH_BUFFER)
+                    cstate = oa_state;
+                else
+                    cstate = nav_state;
+
+                if (cstate == oa_state)
+                    u = run_away(state);
+                else if (cstate == nav_state)
+                    u = go2goal(state, coord);
+            }
+
+            Controller_VS(): Controller()
+            {
+                collect_point.resize(2); 
+                collect_point(0) = 0.5;
+                collect_point(1) = 0.5;
+
+                vsx_gains.p = 0.1;
+                vsx_gains.d = 0.1;
+                vsy_gains.p = 0.1;
+                vsy_gains.d = 0.1;
+
+                old_goal_vec.resize(2);
+                old_goal_vec(0) = 0;
+                old_goal_vec(1) = 0;
+
+                NAV_SPEED = 0.2;
+                OA_SPEED = 0.3; 
+                RUN_AWAY_THRESH = 0.75;
+                STATE_SWITCH_BUFFER = 0.25;
+            }
     };
 
 }
