@@ -90,6 +90,10 @@ int main(int argc, char **argv)
     amdc_s.state << 0,0,0,0,0,0;
     amdc_s.range << 6,6,6,6,6,6,6;
 
+    Eigen::VectorXf goal(2);
+    goal << 100,100;
+    amdc_s.goals.push(goal);
+
     // initialise all publisher and subscriber and sensor data
     init_ultrasonic(nh);
     init_remote_controller(nh);
