@@ -2,8 +2,6 @@
     <node pkg="amdc" type="custom_rosserial" name="serial_node" 
     args="/dev/ttyUSB0"
     output="screen"/>
-    <node pkg="rosbag" type="record" name="record_gps" 
-    args="-o sensors_bag gps_data imu_data mag_data ultrasonic_btm_left ultrasonic_left ultrasonic_top_left ultrasonic_top ultrasonic_top_right ultrasonic_right ultrasonic_btm_right" />
 
     <include file="$(find amdc)/amdc_launch/target_gpscoord_2_map_odom.xml" />
     <include file="$(find amdc)/amdc_launch/static_transformation.xml" />

@@ -78,7 +78,8 @@ class ultrasonic_handler
 
 void ultrasonic_handler::callback(const sensor_msgs::Range& msg)
 {
-    amdc_s->range(id) = msg.range;
+    amdc_s->range_raw(id) = msg.range;
+    amdc_s->range(id) = amdc_s->kf[id].update(msg.range);
 }
 
 void ultrasonic_handler::process_sensor_msg(void *buffer)
@@ -88,6 +89,7 @@ void ultrasonic_handler::process_sensor_msg(void *buffer)
     distance += buf[2] << 8;
     error_code = buf[3];
     distance /= 100.;
+    //distance = 6;
     ROS_DEBUG_STREAM("id " << id << 
                      ", dist: " << distance <<
                      ", error_code: " << error_code);
@@ -176,8 +178,12 @@ void imu_handler::callback(const std_msgs::Int16MultiArray::ConstPtr& msg)
 void imu_handler::process_sensor_msg(void *buffer)
 {
   short *msg = (short *)buffer;
-  imu_msg.linear_acceleration.x = msg[0] * linacc_cf;
-  imu_msg.linear_acceleration.y = msg[1] * linacc_cf;
+  float x = msg[0] * linacc_cf - 0.925141870975;
+  float y = msg[1] * linacc_cf - 0.156783416867;
+  if ((x < 0.06) && (x > -0.06)) x = 0;
+  if ((y < 0.06) && (y > -0.06)) y = 0;
+  imu_msg.linear_acceleration.x = x;
+  imu_msg.linear_acceleration.y = y;
   imu_msg.linear_acceleration.z = msg[2] * linacc_cf;
   imu_msg.angular_velocity.x = msg[3] * angvel_cf;
   imu_msg.angular_velocity.y = msg[4] * angvel_cf;

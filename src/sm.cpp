@@ -11,7 +11,7 @@ using namespace Eigen;
 using namespace controller;
 
 // squared distance in which we consider pose is near goal
-static const float dist_eps = 0.5;
+static const float dist_eps = .5;
 
 // conversion factor from force to pwm
 static const float force2pwm = 230;
@@ -55,9 +55,9 @@ enum sm_states idle()
 static void update_propeller()
 {
     VectorXf cmd, cmd_pwm;
-    static Controller controller;
-    cmd = controller.compute_u(amdc_s.state, amdc_s.goals.front(), amdc_s.range);
-    cmd_pwm = controller.u2pwm(cmd);
+    cmd = amdc_s.controller_nav.compute_u(amdc_s.state, 
+            amdc_s.goals.front(), amdc_s.range);
+    cmd_pwm = amdc_s.controller_nav.u2pwm(cmd);
 
     amdc_s.propeller_cmd.left_spd = cmd_pwm(0);
     amdc_s.propeller_cmd.right_spd = cmd_pwm(1);
@@ -78,6 +78,9 @@ enum sm_states go2goal()
     dist = dist_between(amdc_s.state.head(2), amdc_s.goals.front());
     if (dist < dist_eps)
     {
+        amdc_s.propeller_cmd.left_spd = 0;
+        amdc_s.propeller_cmd.right_spd = 0;
+        amdc_s.propeller_cmd.update = true;
         amdc_s.goals.pop();
         for (int i = 0; i < NUM_OF_RANDOM_GOALS; ++i)
             amdc_s.goals.push(VectorXf::Random(2)*SPREAD + 
@@ -120,10 +123,15 @@ std::string state2name[] =
 
 void update_state_machine()
 {
-    ROS_DEBUG_STREAM("sm " << state2name[state]);
-    ROS_DEBUG_STREAM("state\n" << amdc_s.state);
-    ROS_DEBUG_STREAM("range\n" << amdc_s.range);
-    ROS_DEBUG_STREAM("ref\n" << amdc_s.goals.front());
+    ROS_INFO_STREAM("sm " << state2name[state]);
+    ROS_INFO_STREAM("state\n" << amdc_s.state);
+    ROS_INFO_STREAM("range\n"
+                    "     " << amdc_s.range(3) << "\n" <<
+                    amdc_s.range(2) << "\t\t" << amdc_s.range(4) << "\n\n" <<
+                    amdc_s.range(1) << "\t\t" << amdc_s.range(5) << "\n\n" <<
+                    amdc_s.range(0) << "\t\t" << amdc_s.range(6));
+    if (amdc_s.goals.size() > 0)
+        ROS_INFO_STREAM("ref\n" << amdc_s.goals.front());
 
     state = sm_func[state]();
 }
