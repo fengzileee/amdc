@@ -97,18 +97,32 @@ enum sm_states find_debris()
 
     update_propeller();
 
-    if (amdc_s.debris_coord.size() > 0)
+    if (amdc_s.debris_coord(0) >= 0)
         return sm_go2debris;
 
     dist = dist_between(amdc_s.state.head(2), amdc_s.goals.front());
     if (dist < dist_eps)
         amdc_s.goals.pop();
 
+    if (amdc_s.goals.size() == 0)
+        return sm_idle;
+
     return sm_find_debris;
 }
 
 enum sm_states go2debris()
 {
+    VectorXf cmd, cmd_pwm;
+    if (amdc_s.debris_coord(0) < 0)
+        return find_debris();
+
+    cmd = amdc_s.controller_vs.compute_u(amdc_s.state, 
+            amdc_s.debris_coord, amdc_s.range);
+    cmd_pwm = amdc_s.controller_vs.u2pwm(cmd);
+
+    amdc_s.propeller_cmd.left_spd = cmd_pwm(0);
+    amdc_s.propeller_cmd.right_spd = cmd_pwm(1);
+    amdc_s.propeller_cmd.update = true;
     return sm_go2debris;
 }
 
