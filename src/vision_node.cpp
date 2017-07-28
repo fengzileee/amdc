@@ -68,12 +68,12 @@ const int sw_ysteps = 1 + (im_h - sw_wnd_size) / sw_step_size;
 const Scalar green_colour(0, 255, 0);
 const Scalar blue_colour(255, 0, 0);
 
-const int num_of_class = 2;
-const int debris_class = 0;
+const int num_of_class = 4;
+const int debris_class = 1;
 
 // EMA parameter
 const float ema_param = .7;
-const float threshold_after_ema = .33;
+const float threshold_after_ema = .37;
 
 string cfg_file;
 string weights_file;
@@ -177,10 +177,8 @@ void merge_bounding_boxes(vector<Rect>& out, vector<Rect>& in, bool correct_orde
         return;
 
     unordered_set<int> unmerged;
-    int iter = 0;
     while (1)
     {
-        ++iter;
         bool unchanged = true;
 
         unmerged.clear();
@@ -222,7 +220,6 @@ void merge_bounding_boxes(vector<Rect>& out, vector<Rect>& in, bool correct_orde
             in.push_back(bbox);
         out.clear();
     }
-    cout << "iters " << iter << endl;
 }
 
 // code adapted from darknet
