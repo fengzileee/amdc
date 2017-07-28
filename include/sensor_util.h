@@ -78,7 +78,8 @@ class ultrasonic_handler
 
 void ultrasonic_handler::callback(const sensor_msgs::Range& msg)
 {
-    amdc_s->range(id) = msg.range;
+    amdc_s->range_raw(id) = msg.range;
+    amdc_s->range(id) = amdc_s->kf[id].update(msg.range);
 }
 
 void ultrasonic_handler::process_sensor_msg(void *buffer)
