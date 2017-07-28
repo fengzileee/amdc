@@ -118,7 +118,12 @@ void process_serial_data(uint8_t *buf, int ctr)
                     int msg_sz = data_buf[0];
                     uint8_t *actual_data_buf = data_buf + 1;
 
-                    if (expected_lrc != received_lrc)
+                    if (expected_lrc == received_lrc + 3)
+                    {
+                        if (msg_sz == 19)
+                            imu.process_sensor_msg(actual_data_buf);
+                    }
+                    else if (expected_lrc != received_lrc)
                     {
                         ROS_DEBUG_STREAM("Bad checksum: " << received_lrc
                                 << ", expected: " << expected_lrc);

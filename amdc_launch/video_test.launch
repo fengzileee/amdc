@@ -1,0 +1,11 @@
+<launch>
+    <node pkg="amdc" type="vision_node" name="vision_node" 
+        output="screen"
+        args="--cfg $(find amdc)/data/cnn_configuration
+        --weights $(find amdc)/data/cnn_weights
+        --file /home/randy/.ros/old_vids/raw_19-07-2017_16-48-15.mp4
+        --visualise
+        --save"
+        />
+</launch>
+
