@@ -45,6 +45,7 @@ const int sw_step_size = 14;
 const int sw_xsteps = 1 + (im_w - sw_wnd_size) / sw_step_size;
 const int sw_ysteps = 1 + (im_h - sw_wnd_size) / sw_step_size;
 const Scalar green_colour(0, 255, 0);
+const Scalar blue_colour(255, 0, 0);
 
 const int num_of_class = 4;
 const int debris_class = 1;
@@ -243,12 +244,13 @@ int predict_classifier(const Mat& mat)
     return result;
 }
 
-void set_nearest_debris(const vector<Rect>& bboxes,
-                        geometry_msgs::Point &point)
+Rect& get_nearest_debris(vector<Rect>& bboxes,
+                          geometry_msgs::Point &point)
 {
     // x/y coord of center of bbox
     int bb_x, bb_y;
     int dist;
+    Rect* nearest_bbox = nullptr;
 
     point.x = -1;
     point.y = -1;
@@ -267,8 +269,11 @@ void set_nearest_debris(const vector<Rect>& bboxes,
             point.x = (float) bb_x / im_w;
             point.y = (float) bb_y / im_h;
             nearest_dist = dist;
+            nearest_bbox = &bbox;
         }
     }
+
+    return *nearest_bbox;
 }
 
 int main(int argc, char **argv)
@@ -379,12 +384,13 @@ int main(int argc, char **argv)
         // merge overlapping sliding windows
         merge_bounding_boxes(merged_bbox, raw_bbox, true);
         for (auto bbox : merged_bbox)
-            rectangle(frame, bbox, green_colour, 3);
+            rectangle(frame, bbox, green_colour, 2);
 
         // publish debris coord if detected
         if (merged_bbox.size() > 0)
         {
-            set_nearest_debris(merged_bbox, coord_msg);
+            Rect& nearest_bbox = get_nearest_debris(merged_bbox, coord_msg);
+            rectangle(frame, nearest_bbox, red_colour, 3);
             coord_pub.publish(coord_msg);
         }
 
