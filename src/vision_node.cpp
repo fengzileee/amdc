@@ -43,7 +43,7 @@ const int target_y = im_h;
 const Scalar open_door_colour(50, 50, 255);
 const int open_door_x = target_x;
 const int open_door_y = im_h * .75;
-const int open_door_w = im_w / 2;
+const int open_door_w = im_w / 3;
 const int open_door_h = im_h / 1.5;
 const Rect open_door_rect(open_door_x - open_door_w / 2,
                           open_door_y - open_door_h / 2,
