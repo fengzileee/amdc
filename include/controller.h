@@ -165,7 +165,8 @@ namespace controller
             {
                 gperc.vec = ref - state.head(2);
                 gperc.vec_unit = gperc.vec.array() / gperc.vec.norm(); 
-                gperc.ang = atan2(gperc.vec_unit(1), gperc.vec_unit(0)) - state(2);
+                gperc.ang = atan2(gperc.vec(1), gperc.vec(0)) - state(2);
+                gperc.ang = atan2_angle(gperc.ang);
                 gperc.vnorm = gperc.vec.norm();
                 Matrix2f T = global2local(state(2));
                 gperc.l_vec = T * gperc.vec;
@@ -268,7 +269,7 @@ namespace controller
                 float v_d = gperc.vnorm < CLOSE_DIST ? 
                     NAV_SPEED * gperc.vnorm / CLOSE_DIST : NAV_SPEED;
                 float omega_d;
-                if (cos(heading_err < 0))
+                if  (cos(heading_err) <= 0)
                 {
                     float heading_err_inv = heading_err + PI; 
                     heading_err_inv = atan2_angle(heading_err_inv);
