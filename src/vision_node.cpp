@@ -46,8 +46,8 @@ const int sw_xsteps = 1 + (im_w - sw_wnd_size) / sw_step_size;
 const int sw_ysteps = 1 + (im_h - sw_wnd_size) / sw_step_size;
 const Scalar green_colour(0, 255, 0);
 
-const int num_of_class = 4;
-const int debris_class = 1;
+const int num_of_class = 2;
+const int debris_class = 0;
 
 string cfg_file;
 string weights_file;
@@ -150,50 +150,53 @@ void merge_bounding_boxes(vector<Rect>& out, vector<Rect>& in, bool correct_orde
     if (in.size() == 0)
         return;
 
-    bool unchanged = true;
-
     unordered_set<int> unmerged;
-    for (int i = 0; i < in.size(); ++i)
-        unmerged.insert(i);
-
-    for (int i = 0; i < in.size(); ++i)
+    int iter = 0;
+    while (1)
     {
-        merged = in[i];
-        bool was_merged = false;
+        ++iter;
+        bool unchanged = true;
 
-        for (int j = i + 1; j < in.size(); ++j)
+        unmerged.clear();
+        for (int i = 0; i < in.size(); ++i)
+            unmerged.insert(i);
+
+        for (int i = 0; i < in.size(); ++i)
         {
-            Rect intersection = in[j] & merged;
-            if (intersection.area() > 0)
+            merged = in[i];
+            bool was_merged = false;
+
+            for (int j = i + 1; j < in.size(); ++j)
             {
-                merged = in[j] | merged;
-                unmerged.erase(i);
-                unmerged.erase(j);
-                was_merged = true;
+                Rect intersection = in[j] & merged;
+                if (intersection.area() > 0)
+                {
+                    merged = in[j] | merged;
+                    unmerged.erase(i);
+                    unmerged.erase(j);
+                    was_merged = true;
+                }
+            }
+
+            if (was_merged)
+            {
+                unchanged = false;
+                out.push_back(merged);
             }
         }
 
-        if (was_merged)
-        {
-            unchanged = false;
-            out.push_back(merged);
-        }
-    }
+        for (auto &i : unmerged)
+            out.push_back(in[i]);
 
-    for (auto &i : unmerged)
-        out.push_back(in[i]);
+        if (unchanged)
+            break;
 
-    if (unchanged == false)
-    {
-        in.clear();
-        merge_bounding_boxes(in, out, !correct_order);
-    }
-    else if (correct_order == false)
-    {
         in.clear();
         for (auto &bbox : out)
             in.push_back(bbox);
+        out.clear();
     }
+    cout << "iters " << iter << endl;
 }
 
 // code adapted from darknet
