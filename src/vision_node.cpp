@@ -71,6 +71,10 @@ const Scalar blue_colour(255, 0, 0);
 const int num_of_class = 4;
 const int debris_class = 1;
 
+// EMA parameter
+const float ema_param = .7;
+const float threshold_after_ema = .33;
+
 string cfg_file;
 string weights_file;
 string video_file;
@@ -242,8 +246,9 @@ image Mat_to_image(const Mat &mat)
 }
 
 // code adapted from darknet
-int predict_classifier(const Mat& mat)
+int predict_classifier(const Mat& mat, int x, int y)
 {
+    static float old_predictions[sw_xsteps][sw_ysteps][num_of_class] {0};
     int top = num_of_class;
 
     int indexes[num_of_class];
@@ -256,9 +261,28 @@ int predict_classifier(const Mat& mat)
     float *predictions = network_predict(net, im.data);
     if (net.hierarchy)
         hierarchy_predictions(predictions, net.outputs, net.hierarchy, 1, 1);
+
+    // ema
+    for (int i = 0; i < top; ++i)
+    {
+        predictions[i] = ema_param*(1 - ema_param)*old_predictions[x][y][i] + 
+                         (1 - ema_param)*predictions[i];
+        old_predictions[x][y][i] = predictions[i];
+    }
+
     top_k(predictions, net.outputs, top, indexes);
 
     int result = indexes[0];
+
+    if (result == debris_class && 
+        predictions[debris_class] > threshold_after_ema)
+    {
+        result = debris_class;
+    }
+    else
+    {
+        result = !debris_class;
+    }
     
     free_image(im);
 
@@ -400,7 +424,7 @@ int main(int argc, char **argv)
                                sw_wnd_size,
                                sw_wnd_size);
                 Mat grid = original(grid_rect);
-                int p = predict_classifier(grid);
+                int p = predict_classifier(grid, x, y);
                 if (p == debris_class) // debris found
                 {
                     raw_bbox.push_back(grid_rect);
