@@ -88,6 +88,7 @@ void ultrasonic_handler::process_sensor_msg(void *buffer)
     distance += buf[2] << 8;
     error_code = buf[3];
     distance /= 100.;
+    //distance = 6;
     ROS_DEBUG_STREAM("id " << id << 
                      ", dist: " << distance <<
                      ", error_code: " << error_code);
@@ -176,8 +177,12 @@ void imu_handler::callback(const std_msgs::Int16MultiArray::ConstPtr& msg)
 void imu_handler::process_sensor_msg(void *buffer)
 {
   short *msg = (short *)buffer;
-  imu_msg.linear_acceleration.x = msg[0] * linacc_cf;
-  imu_msg.linear_acceleration.y = msg[1] * linacc_cf;
+  float x = msg[0] * linacc_cf - 0.925141870975;
+  float y = msg[1] * linacc_cf - 0.156783416867;
+  if ((x < 0.06) && (x > -0.06)) x = 0;
+  if ((y < 0.06) && (y > -0.06)) y = 0;
+  imu_msg.linear_acceleration.x = x;
+  imu_msg.linear_acceleration.y = y;
   imu_msg.linear_acceleration.z = msg[2] * linacc_cf;
   imu_msg.angular_velocity.x = msg[3] * angvel_cf;
   imu_msg.angular_velocity.y = msg[4] * angvel_cf;
@@ -221,7 +226,7 @@ class gps_handler
     void advertise(ros::NodeHandle nh)
     {
       pub = nh.advertise<sensor_msgs::NavSatFix>("gps_data", 1000);
-      gps_msg.header.frame_id = "map";
+      gps_msg.header.frame_id = "gps_frame";
     }
 
     void subscribe(ros::NodeHandle nh)
@@ -253,6 +258,10 @@ void gps_handler::callback(const std_msgs::Int32MultiArray::ConstPtr& msg)
 void gps_handler::process_sensor_msg(void *buffer)
 {
   int *msg = (int *)buffer;
+
+  // Only publish legit fix (i.e. when status == 0)
+  if (msg[3] != 0) return;
+
   gps_msg.latitude = msg[0] / 10000000.; 
   gps_msg.longitude = msg[1] / 10000000.;
   gps_msg.altitude =  msg[2] / 100.;

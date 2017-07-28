@@ -1,0 +1,12 @@
+<launch>
+    <node pkg="amdc" type="custom_rosserial" name="serial_node" 
+    args="/dev/ttyUSB0"
+    output="screen"/>
+
+    <include file="$(find amdc)/amdc_launch/target_gpscoord_2_map_odom.xml" />
+    <include file="$(find amdc)/amdc_launch/static_transformation.xml" />
+    <include file="$(find amdc)/amdc_launch/imu_mag_fusion.xml" />
+    <include file="$(find amdc)/amdc_launch/robot.xml" />
+    <include file="$(find amdc)/amdc_launch/video_test.launch" />
+</launch>
+

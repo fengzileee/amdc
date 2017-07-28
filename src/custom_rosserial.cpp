@@ -118,7 +118,12 @@ void process_serial_data(uint8_t *buf, int ctr)
                     int msg_sz = data_buf[0];
                     uint8_t *actual_data_buf = data_buf + 1;
 
-                    if (expected_lrc != received_lrc)
+                    if (expected_lrc == received_lrc + 3)
+                    {
+                        if (msg_sz == 19)
+                            imu.process_sensor_msg(actual_data_buf);
+                    }
+                    else if (expected_lrc != received_lrc)
                     {
                         ROS_DEBUG_STREAM("Bad checksum: " << received_lrc
                                 << ", expected: " << expected_lrc);
@@ -172,7 +177,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "custom_rosserial");
     ros::NodeHandle nh;
 
-    begin_serial(argv[1], 5); // timeout of 5s
+    begin_serial(argv[1], 1); // timeout of 1s
 
     init_ultrasonic(nh);
     init_imu(nh);
@@ -188,6 +193,10 @@ int main(int argc, char **argv)
         {
             ROS_WARN_STREAM("received " << recv
                     << " bytes. buffer getting full");
+        }
+        else if (recv == 0)
+        {
+            ROS_WARN_STREAM("read from serial timeout");
         }
         process_serial_data(buf, recv);
         ros::spinOnce();
