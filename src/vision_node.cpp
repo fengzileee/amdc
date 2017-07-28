@@ -39,6 +39,27 @@ const int im_h = 144;
 const int target_x = im_w / 2;
 const int target_y = im_h;
 
+// thresholds for controlling servos and propeller
+const Scalar open_door_colour(50, 50, 255);
+const int open_door_x = target_x;
+const int open_door_y = im_h * .75;
+const int open_door_w = im_w / 2;
+const int open_door_h = im_h / 1.5;
+const Rect open_door_rect(open_door_x - open_door_w / 2,
+                          open_door_y - open_door_h / 2,
+                          open_door_w,
+                          open_door_h);
+
+const Scalar close_door_colour(0, 0, 155);
+const int close_door_x = target_x;
+const int close_door_y = im_h * .95;
+const int close_door_w = im_w / 1.5;
+const int close_door_h = im_h / 4;
+const Rect close_door_rect(close_door_x - close_door_w / 2,
+                          close_door_y - close_door_h / 2,
+                          close_door_w,
+                          close_door_h);
+
 // properties of sliding window
 const int sw_wnd_size = 28;
 const int sw_step_size = 14;
@@ -276,6 +297,12 @@ Rect& get_nearest_debris(vector<Rect>& bboxes,
     return *nearest_bbox;
 }
 
+void threshold_debris(Rect& nearest_bbox, Mat& frame)
+{
+    //rectangle(frame, open_door_rect, open_door_colour, 1);
+    //rectangle(frame, close_door_rect, close_door_colour, 1);
+}
+
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "vision_node");
@@ -386,11 +413,16 @@ int main(int argc, char **argv)
         for (auto bbox : merged_bbox)
             rectangle(frame, bbox, green_colour, 2);
 
+        // visualise thresholds
+        rectangle(frame, open_door_rect, open_door_colour, 1);
+        rectangle(frame, close_door_rect, close_door_colour, 1);
+
         // publish debris coord if detected
         if (merged_bbox.size() > 0)
         {
             Rect& nearest_bbox = get_nearest_debris(merged_bbox, coord_msg);
-            rectangle(frame, nearest_bbox, red_colour, 3);
+            threshold_debris(nearest_bbox, frame);
+            rectangle(frame, nearest_bbox, blue_colour, 3);
             coord_pub.publish(coord_msg);
         }
 
