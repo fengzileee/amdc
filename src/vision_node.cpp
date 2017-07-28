@@ -445,13 +445,13 @@ int main(int argc, char **argv)
         rectangle(frame, close_door_rect, close_door_colour, 1);
 
         // publish debris coord if detected
+        Rect& nearest_bbox = get_nearest_debris(merged_bbox, coord_msg);
         if (merged_bbox.size() > 0)
         {
-            Rect& nearest_bbox = get_nearest_debris(merged_bbox, coord_msg);
             threshold_debris(nearest_bbox, frame);
             rectangle(frame, nearest_bbox, blue_colour, 3);
-            coord_pub.publish(coord_msg);
         }
+        coord_pub.publish(coord_msg);
 
         // publish image as ros msg
         msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", frame).toImageMsg();

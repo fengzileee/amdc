@@ -46,6 +46,7 @@ public:
         range.resize(7);
         range_raw.resize(7);
         debris_coord.resize(2);
+        debris_coord << -1, -1;
     }
 
     void stateUpdateCallback(const nav_msgs::Odometry::ConstPtr& msg)
@@ -73,7 +74,6 @@ public:
 
     void visionCallback(const geometry_msgs::Point::ConstPtr& msg)
     {
-        ROS_ASSERT(msg->x >= 0 && msg->y >= 0);
         debris_coord(0) = msg->x;
         debris_coord(1) = msg->y;
     }
