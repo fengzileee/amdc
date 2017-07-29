@@ -95,7 +95,7 @@ int main(int argc, char **argv)
     amdc_s.range << 6,6,6,6,6,6,6;
 
     Eigen::VectorXf goal(2);
-    goal << 100,100;
+    goal << 4,4;
     amdc_s.goals.push(goal);
 
     // initialise all publisher and subscriber and sensor data
