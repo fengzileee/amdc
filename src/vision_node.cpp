@@ -39,15 +39,41 @@ const int im_h = 144;
 const int target_x = im_w / 2;
 const int target_y = im_h;
 
+// thresholds for controlling servos and propeller
+const Scalar open_door_colour(50, 50, 255);
+const int open_door_x = target_x;
+const int open_door_y = im_h * .75;
+const int open_door_w = im_w / 3;
+const int open_door_h = im_h / 1.5;
+const Rect open_door_rect(open_door_x - open_door_w / 2,
+                          open_door_y - open_door_h / 2,
+                          open_door_w,
+                          open_door_h);
+
+const Scalar close_door_colour(0, 0, 155);
+const int close_door_x = target_x;
+const int close_door_y = im_h * .95;
+const int close_door_w = im_w / 1.5;
+const int close_door_h = im_h / 4;
+const Rect close_door_rect(close_door_x - close_door_w / 2,
+                          close_door_y - close_door_h / 2,
+                          close_door_w,
+                          close_door_h);
+
 // properties of sliding window
 const int sw_wnd_size = 28;
 const int sw_step_size = 14;
 const int sw_xsteps = 1 + (im_w - sw_wnd_size) / sw_step_size;
 const int sw_ysteps = 1 + (im_h - sw_wnd_size) / sw_step_size;
 const Scalar green_colour(0, 255, 0);
+const Scalar blue_colour(255, 0, 0);
 
-const int num_of_class = 2;
-const int debris_class = 0;
+const int num_of_class = 4;
+const int debris_class = 1;
+
+// EMA parameter
+const float ema_param = .7;
+const float threshold_after_ema = .37;
 
 string cfg_file;
 string weights_file;
@@ -151,10 +177,8 @@ void merge_bounding_boxes(vector<Rect>& out, vector<Rect>& in, bool correct_orde
         return;
 
     unordered_set<int> unmerged;
-    int iter = 0;
     while (1)
     {
-        ++iter;
         bool unchanged = true;
 
         unmerged.clear();
@@ -196,7 +220,6 @@ void merge_bounding_boxes(vector<Rect>& out, vector<Rect>& in, bool correct_orde
             in.push_back(bbox);
         out.clear();
     }
-    cout << "iters " << iter << endl;
 }
 
 // code adapted from darknet
@@ -223,8 +246,9 @@ image Mat_to_image(const Mat &mat)
 }
 
 // code adapted from darknet
-int predict_classifier(const Mat& mat)
+int predict_classifier(const Mat& mat, int x, int y)
 {
+    static float old_predictions[sw_xsteps][sw_ysteps][num_of_class] {0};
     int top = num_of_class;
 
     int indexes[num_of_class];
@@ -237,21 +261,41 @@ int predict_classifier(const Mat& mat)
     float *predictions = network_predict(net, im.data);
     if (net.hierarchy)
         hierarchy_predictions(predictions, net.outputs, net.hierarchy, 1, 1);
+
+    // ema
+    for (int i = 0; i < top; ++i)
+    {
+        predictions[i] = ema_param*(1 - ema_param)*old_predictions[x][y][i] + 
+                         (1 - ema_param)*predictions[i];
+        old_predictions[x][y][i] = predictions[i];
+    }
+
     top_k(predictions, net.outputs, top, indexes);
 
     int result = indexes[0];
+
+    if (result == debris_class && 
+        predictions[debris_class] > threshold_after_ema)
+    {
+        result = debris_class;
+    }
+    else
+    {
+        result = !debris_class;
+    }
     
     free_image(im);
 
     return result;
 }
 
-void set_nearest_debris(const vector<Rect>& bboxes,
-                        geometry_msgs::Point &point)
+Rect& get_nearest_debris(vector<Rect>& bboxes,
+                          geometry_msgs::Point &point)
 {
     // x/y coord of center of bbox
     int bb_x, bb_y;
     int dist;
+    Rect* nearest_bbox = nullptr;
 
     point.x = -1;
     point.y = -1;
@@ -270,8 +314,17 @@ void set_nearest_debris(const vector<Rect>& bboxes,
             point.x = (float) bb_x / im_w;
             point.y = (float) bb_y / im_h;
             nearest_dist = dist;
+            nearest_bbox = &bbox;
         }
     }
+
+    return *nearest_bbox;
+}
+
+void threshold_debris(Rect& nearest_bbox, Mat& frame)
+{
+    //rectangle(frame, open_door_rect, open_door_colour, 1);
+    //rectangle(frame, close_door_rect, close_door_colour, 1);
 }
 
 int main(int argc, char **argv)
@@ -371,7 +424,7 @@ int main(int argc, char **argv)
                                sw_wnd_size,
                                sw_wnd_size);
                 Mat grid = original(grid_rect);
-                int p = predict_classifier(grid);
+                int p = predict_classifier(grid, x, y);
                 if (p == debris_class) // debris found
                 {
                     raw_bbox.push_back(grid_rect);
@@ -382,14 +435,20 @@ int main(int argc, char **argv)
         // merge overlapping sliding windows
         merge_bounding_boxes(merged_bbox, raw_bbox, true);
         for (auto bbox : merged_bbox)
-            rectangle(frame, bbox, green_colour, 3);
+            rectangle(frame, bbox, green_colour, 2);
+
+        // visualise thresholds
+        rectangle(frame, open_door_rect, open_door_colour, 1);
+        rectangle(frame, close_door_rect, close_door_colour, 1);
 
         // publish debris coord if detected
+        Rect& nearest_bbox = get_nearest_debris(merged_bbox, coord_msg);
         if (merged_bbox.size() > 0)
         {
-            set_nearest_debris(merged_bbox, coord_msg);
-            coord_pub.publish(coord_msg);
+            threshold_debris(nearest_bbox, frame);
+            rectangle(frame, nearest_bbox, blue_colour, 3);
         }
+        coord_pub.publish(coord_msg);
 
         // publish image as ros msg
         msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", frame).toImageMsg();

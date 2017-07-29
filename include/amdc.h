@@ -7,6 +7,7 @@
 
 #include "geometry_msgs/PointStamped.h"
 #include <nav_msgs/Odometry.h>
+#include <geometry_msgs/Point.h>
 #include <sensor_msgs/Imu.h>
 #include "controller.h" 
 #include "kalman.h"
@@ -45,6 +46,7 @@ public:
         range.resize(7);
         range_raw.resize(7);
         debris_coord.resize(2);
+        debris_coord << -1, -1;
     }
 
     void stateUpdateCallback(const nav_msgs::Odometry::ConstPtr& msg)
@@ -68,6 +70,12 @@ public:
         state(3) = msg -> twist.twist.linear.x; 
         state(4) = msg -> twist.twist.linear.y; 
         state(5) = msg -> twist.twist.angular.z; 
+    }
+
+    void visionCallback(const geometry_msgs::Point::ConstPtr& msg)
+    {
+        debris_coord(0) = msg->x;
+        debris_coord(1) = msg->y;
     }
 
     void imuMagFusedCallback(const sensor_msgs::Imu::ConstPtr& msg)
