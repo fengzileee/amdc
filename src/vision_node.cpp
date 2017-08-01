@@ -19,6 +19,8 @@
 #include <sstream>
 #include <unordered_set>
 
+#include "debris_thresholds.h"
+
 extern "C"
 {
 #include "darknet/darknet.h"
@@ -39,26 +41,24 @@ const int im_h = 144;
 const int target_x = im_w / 2;
 const int target_y = im_h;
 
-// thresholds for controlling servos and propeller
+// thresholds for controlling servos
 const Scalar open_door_colour(50, 50, 255);
-const int open_door_x = target_x;
-const int open_door_y = im_h * .75;
-const int open_door_w = im_w / 3;
-const int open_door_h = im_h / 1.5;
-const Rect open_door_rect(open_door_x - open_door_w / 2,
-                          open_door_y - open_door_h / 2,
-                          open_door_w,
-                          open_door_h);
+const Rect open_door_rect(open_door_box_x1 * im_w,
+                          open_door_box_y1 * im_h,
+                          open_door_box_w * im_w,
+                          open_door_box_h * im_h);
 
 const Scalar close_door_colour(0, 0, 155);
-const int close_door_x = target_x;
-const int close_door_y = im_h * .95;
-const int close_door_w = im_w / 1.5;
-const int close_door_h = im_h / 4;
-const Rect close_door_rect(close_door_x - close_door_w / 2,
-                          close_door_y - close_door_h / 2,
-                          close_door_w,
-                          close_door_h);
+const Rect close_door_rect(close_door_box_x1 * im_w,
+                           close_door_box_y1 * im_h,
+                           close_door_box_w * im_w,
+                           close_door_box_h * im_h);
+
+const Scalar stay_opened_colour(150, 150, 255);
+const Rect stay_opened_rect(stay_opened_box_x1 * im_w,
+                            stay_opened_box_y1 * im_h,
+                            stay_opened_box_w * im_w,
+                            stay_opened_box_h * im_h);
 
 // properties of sliding window
 const int sw_wnd_size = 28;
@@ -321,12 +321,6 @@ Rect& get_nearest_debris(vector<Rect>& bboxes,
     return *nearest_bbox;
 }
 
-void threshold_debris(Rect& nearest_bbox, Mat& frame)
-{
-    //rectangle(frame, open_door_rect, open_door_colour, 1);
-    //rectangle(frame, close_door_rect, close_door_colour, 1);
-}
-
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "vision_node");
@@ -440,12 +434,12 @@ int main(int argc, char **argv)
         // visualise thresholds
         rectangle(frame, open_door_rect, open_door_colour, 1);
         rectangle(frame, close_door_rect, close_door_colour, 1);
+        rectangle(frame, stay_opened_rect, stay_opened_colour, 1);
 
         // publish debris coord if detected
         Rect& nearest_bbox = get_nearest_debris(merged_bbox, coord_msg);
         if (merged_bbox.size() > 0)
         {
-            threshold_debris(nearest_bbox, frame);
             rectangle(frame, nearest_bbox, blue_colour, 3);
         }
         coord_pub.publish(coord_msg);

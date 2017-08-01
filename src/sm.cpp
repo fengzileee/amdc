@@ -4,6 +4,7 @@
 #include "amdc.h"
 #include <Eigen/Dense>
 #include "controller.h"
+#include "debris_thresholds.h"
 
 #include <string>
 
@@ -13,13 +14,18 @@ using namespace controller;
 // squared distance in which we consider pose is near goal
 static const float dist_eps = .5;
 
-// conversion factor from force to pwm
-static const float force2pwm = 230;
+static const float full_pwm = 230;
+static const float open_door_pwm = 0;
+static const float close_door_pwm = 100;
 
 // arbitrary number of random goals while finding for debris
 static const int NUM_OF_RANDOM_GOALS = 5;
 // spread of the distance between random goals and pose
 static const int SPREAD = 3;
+
+static ros::Time timer;
+static ros::Duration close_door_duration(1);
+static ros::Duration open_door_duration(1);
 
 enum sm_states 
 {
@@ -27,6 +33,9 @@ enum sm_states
     sm_go2goal,
     sm_find_debris,
     sm_go2debris,
+    sm_opening_door,
+    sm_opened_door,
+    sm_closing_door,
     sm_invalid
 };
 
@@ -34,6 +43,9 @@ enum sm_states idle();
 enum sm_states go2goal();
 enum sm_states find_debris();
 enum sm_states go2debris();
+enum sm_states opening_door();
+enum sm_states opened_door();
+enum sm_states closing_door();
 
 enum sm_states (*sm_func[4])() =
 {
@@ -112,10 +124,17 @@ enum sm_states find_debris()
 
 enum sm_states go2debris()
 {
-    VectorXf cmd, cmd_pwm;
     if (amdc_s.debris_coord(0) < 0)
         return find_debris();
 
+    // TODO
+    if (in_open_door_box(amdc_s.debris_coord))
+    {
+        timer = ros::Time::now() + open_door_duration;
+        return sm_opening_door;
+    }
+
+    VectorXf cmd, cmd_pwm;
     cmd = amdc_s.controller_vs.compute_u(amdc_s.state, 
             amdc_s.debris_coord, amdc_s.range);
     cmd_pwm = amdc_s.controller_vs.u2pwm(cmd);
@@ -126,12 +145,53 @@ enum sm_states go2debris()
     return sm_go2debris;
 }
 
+enum sm_states opening_door()
+{
+    if (ros::Time::now() > timer)
+        return sm_opened_door;
+
+    amdc_s.propeller_cmd.left_spd = open_door_pwm;
+    amdc_s.propeller_cmd.right_spd = open_door_pwm;
+    amdc_s.propeller_cmd.update = true;
+    return sm_opening_door;
+}
+
+enum sm_states opened_door()
+{
+    // !in_stay_opened_box includes -1,-1 (i.e. no debris)
+    if (in_close_door_box(amdc_s.debris_coord) ||
+            !in_stay_opened_box(amdc_s.debris_coord))
+    {
+        timer = ros::Time::now() + close_door_duration;
+        return sm_closing_door;
+    }
+
+    amdc_s.propeller_cmd.left_spd = full_pwm;
+    amdc_s.propeller_cmd.right_spd = full_pwm;
+    amdc_s.propeller_cmd.update = true;
+    return sm_opened_door;
+}
+
+enum sm_states closing_door()
+{
+    if (ros::Time::now() > timer)
+        return sm_find_debris;
+
+    amdc_s.propeller_cmd.left_spd = close_door_pwm;
+    amdc_s.propeller_cmd.right_spd = close_door_pwm;
+    amdc_s.propeller_cmd.update = true;
+    return sm_closing_door;
+}
+
 std::string state2name[] =
 {
     "sm_idle",
     "sm_go2goal",
     "sm_find_debris",
     "sm_go2debris",
+    "sm_opening_door",
+    "sm_opened_door",
+    "sm_closing_door",
     "sm_invalid"
 };
 
