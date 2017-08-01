@@ -445,13 +445,13 @@ namespace controller
             Controller_VS(): Controller()
             {
                 collect_point.resize(2); 
-                collect_point(0) = 0.5;
+                collect_point(0) = 0.33;
                 collect_point(1) = 0.5;
 
-                vsx_gains.p = 0.1;
-                vsx_gains.d = 0.1;
-                vsy_gains.p = 0.1;
-                vsy_gains.d = 0.1;
+                vsx_gains.p = 2;
+                vsx_gains.d = 1;
+                vsy_gains.p = 0.75;
+                vsy_gains.d = 0.5;
 
                 old_goal_vec.resize(2);
                 old_goal_vec(0) = 0;

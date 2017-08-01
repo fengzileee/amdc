@@ -21,8 +21,7 @@ struct PropellerCommand
 
 struct ServoCommand
 {
-    int16_t left_angle;
-    int16_t right_angle;
+    bool open;
     bool update;
 };
 
@@ -40,7 +39,10 @@ public:
     ServoCommand servo_cmd;
     bool remote_controlled;
 
-    Amdc()
+    Amdc():
+      propeller_cmd({0, 0, false}),
+      servo_cmd({false, false}),
+      remote_controlled(false)
     {
         state.resize(6);
         range.resize(7);

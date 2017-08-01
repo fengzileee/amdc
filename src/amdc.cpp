@@ -17,6 +17,9 @@ ultrasonic_handler ultrasonic[7];
 ros::Publisher propeller_pub;
 amdc::PropellerCmd propeller_msg;
 
+ros::Publisher servo_pub;
+std_msgs::Bool servo_msg;
+
 ros::Subscriber rc_cond;
 ros::Subscriber rc_cmd;
 
@@ -62,13 +65,12 @@ void init_vision(ros::NodeHandle nh)
 
 void init_propeller(ros::NodeHandle nh)
 {
-    propeller_pub = nh.advertise<amdc::PropellerCmd>("propeller_cmd", 1000);
+    propeller_pub = nh.advertise<amdc::PropellerCmd>("propeller_cmd", 1);
 }
 
 void init_servo(ros::NodeHandle nh)
 {
-    // TODO
-    // add publisher here
+    servo_pub = nh.advertise<std_msgs::Bool>("servo_cmd", 1);
 }
 
 void update_actuators()
@@ -82,6 +84,12 @@ void update_actuators()
 
         propeller_pub.publish(propeller_msg);
         amdc_s.propeller_cmd.update = false;
+    }
+
+    if (amdc_s.servo_cmd.update == true)
+    {
+        servo_msg.data = amdc_s.servo_cmd.open;
+        amdc_s.servo_cmd.update = false;
     }
 }
 
