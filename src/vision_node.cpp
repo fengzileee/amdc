@@ -39,6 +39,9 @@ const int im_h = 144;
 const int target_x = im_w / 2;
 const int target_y = im_h;
 
+const Scalar green_colour(0, 255, 0);
+const Scalar blue_colour(255, 0, 0);
+
 // thresholds for controlling servos and propeller
 const Scalar open_door_colour(50, 50, 255);
 const int open_door_x = target_x;
@@ -59,21 +62,6 @@ const Rect close_door_rect(close_door_x - close_door_w / 2,
                           close_door_y - close_door_h / 2,
                           close_door_w,
                           close_door_h);
-
-// properties of sliding window
-const int sw_wnd_size = 28;
-const int sw_step_size = 14;
-const int sw_xsteps = 1 + (im_w - sw_wnd_size) / sw_step_size;
-const int sw_ysteps = 1 + (im_h - sw_wnd_size) / sw_step_size;
-const Scalar green_colour(0, 255, 0);
-const Scalar blue_colour(255, 0, 0);
-
-const int num_of_class = 4;
-const int debris_class = 1;
-
-// EMA parameter
-const float ema_param = .7;
-const float threshold_after_ema = .37;
 
 string cfg_file;
 string weights_file;
@@ -245,48 +233,50 @@ image Mat_to_image(const Mat &mat)
     return im;
 }
 
-// code adapted from darknet
-int predict_classifier(const Mat& mat, int x, int y)
+/**
+ * Runs darknet's detector. It is hardcoded for single class detection. Code is
+ * adapted from darknet.
+ */
+void test_detector(Mat& mat, float thresh, float hier_thresh, float nms, vector<Rect>& bbox)
 {
-    static float old_predictions[sw_xsteps][sw_ysteps][num_of_class] {0};
-    int top = num_of_class;
-
-    int indexes[num_of_class];
-    int size = net.w;
+    int j;
 
     image im = Mat_to_image(mat);
-    image r = resize_min(im, size);
-    resize_network(&net, r.w, r.h);
+    image sized = letterbox_image(im, net.w, net.h);
+    layer l = net.layers[net.n-1];
 
-    float *predictions = network_predict(net, im.data);
-    if (net.hierarchy)
-        hierarchy_predictions(predictions, net.outputs, net.hierarchy, 1, 1);
-
-    // ema
-    for (int i = 0; i < top; ++i)
-    {
-        predictions[i] = ema_param*(1 - ema_param)*old_predictions[x][y][i] + 
-                         (1 - ema_param)*predictions[i];
-        old_predictions[x][y][i] = predictions[i];
+    box *boxes = (box *) calloc(l.w*l.h*l.n, sizeof(box));
+    float **probs = (float **) calloc(l.w*l.h*l.n, sizeof(float *));
+    for(j = 0; j < l.w*l.h*l.n; ++j) probs[j] = (float *) calloc(l.classes + 1, sizeof(float *));
+    float **masks = 0;
+    if (l.coords > 4){
+        masks = (float **) calloc(l.w*l.h*l.n, sizeof(float*));
+        for(j = 0; j < l.w*l.h*l.n; ++j) masks[j] = (float *) calloc(l.coords-4, sizeof(float *));
     }
 
-    top_k(predictions, net.outputs, top, indexes);
-
-    int result = indexes[0];
-
-    if (result == debris_class && 
-        predictions[debris_class] > threshold_after_ema)
+    float *X = sized.data;
+    network_predict(net, X);
+    get_region_boxes(l, im.w, im.h, net.w, net.h, thresh, probs, boxes, masks, 0, 0, hier_thresh, 1);
+    if (nms) do_nms_obj(boxes, probs, l.w*l.h*l.n, l.classes, nms);
+    for (j = 0; j < l.w*l.h*l.n; ++j)
     {
-        result = debris_class;
+        int best_class = max_index(probs[j], l.classes);
+        float prob = probs[j][best_class];
+        box b = boxes[j];
+        if (prob > thresh)
+        {
+            int x = (b.x - b.w/2) * im_w;
+            int y = (b.y - b.h/2) * im_h;
+            int w = im_w * b.w;
+            int h = im_h * b.h;
+            bbox.push_back(Rect(x, y, w, h));
+        }
     }
-    else
-    {
-        result = !debris_class;
-    }
-    
+
     free_image(im);
-
-    return result;
+    free_image(sized);
+    free(boxes);
+    free_ptrs((void **)probs, l.w*l.h*l.n);
 }
 
 Rect& get_nearest_debris(vector<Rect>& bboxes,
@@ -388,7 +378,7 @@ int main(int argc, char **argv)
     set_batch_network(&net, 1);
     srand(2222222);
 
-    vector<Rect> raw_bbox, merged_bbox;
+    vector<Rect> merged_bbox;
 
     if (visualise)
         namedWindow("predictions", WINDOW_NORMAL);
@@ -411,29 +401,9 @@ int main(int argc, char **argv)
         resize(capture, frame, Size(im_w, im_h), 0, 0, CV_INTER_AREA);
 
         original = frame.clone();
-        raw_bbox.clear();
         merged_bbox.clear();
+        test_detector(frame, 0.2, 0.5, 0.05, merged_bbox);
 
-        // perform prediction on sliding window
-        for (int x = 0; x < sw_xsteps; ++x)
-        {
-            for (int y = 0; y < sw_ysteps; ++y)
-            {
-                Rect grid_rect(x*sw_step_size, 
-                               y*sw_step_size,
-                               sw_wnd_size,
-                               sw_wnd_size);
-                Mat grid = original(grid_rect);
-                int p = predict_classifier(grid, x, y);
-                if (p == debris_class) // debris found
-                {
-                    raw_bbox.push_back(grid_rect);
-                }
-            }
-        }
-
-        // merge overlapping sliding windows
-        merge_bounding_boxes(merged_bbox, raw_bbox, true);
         for (auto bbox : merged_bbox)
             rectangle(frame, bbox, green_colour, 2);
 
