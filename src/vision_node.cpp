@@ -73,7 +73,7 @@ const int debris_class = 1;
 
 // EMA parameter
 const float ema_param = .7;
-const float threshold_after_ema = .37;
+const float threshold_after_ema = .375;
 
 string cfg_file;
 string weights_file;
