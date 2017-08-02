@@ -21,7 +21,7 @@ static const float close_door_pwm = 100;
 // arbitrary number of random goals while finding for debris
 static const int NUM_OF_RANDOM_GOALS = 5;
 // spread of the distance between random goals and pose
-static const int SPREAD = 3;
+static const int SPREAD = .5;
 
 static ros::Time timer;
 static ros::Duration close_door_duration(1.5);
