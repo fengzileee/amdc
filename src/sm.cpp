@@ -21,11 +21,12 @@ static const float close_door_pwm = 100;
 // arbitrary number of random goals while finding for debris
 static const int NUM_OF_RANDOM_GOALS = 5;
 // spread of the distance between random goals and pose
-static const int SPREAD = .5;
+static const float SPREAD = .5;
 
 static ros::Time timer;
-static ros::Duration close_door_duration(1.5);
-static ros::Duration open_door_duration(1.5);
+static ros::Duration close_door_duration(1);
+static ros::Duration open_door_duration(1);
+static ros::Duration close_door_delay(2);
 
 enum sm_states 
 {
@@ -35,6 +36,7 @@ enum sm_states
     sm_go2debris,
     sm_opening_door,
     sm_opened_door,
+    sm_delay_before_closing_door,
     sm_closing_door,
     sm_invalid
 };
@@ -45,9 +47,10 @@ enum sm_states find_debris();
 enum sm_states go2debris();
 enum sm_states opening_door();
 enum sm_states opened_door();
+enum sm_states delay_before_closing_door();
 enum sm_states closing_door();
 
-enum sm_states (*sm_func[7])() =
+enum sm_states (*sm_func[8])() =
 {
     idle,
     go2goal,
@@ -55,6 +58,7 @@ enum sm_states (*sm_func[7])() =
     go2debris,
     opening_door,
     opened_door,
+    delay_before_closing_door,
     closing_door
 };
 
@@ -176,6 +180,24 @@ enum sm_states opened_door()
             !in_stay_opened_box(amdc_s.debris_coord) ||
             decelerating)
     {
+        timer = ros::Time::now() + close_door_delay;
+        return sm_delay_before_closing_door;
+    }
+
+    amdc_s.propeller_cmd.left_spd = cmd_pwm(0);
+    amdc_s.propeller_cmd.right_spd = cmd_pwm(1);
+    amdc_s.propeller_cmd.update = true;
+    return sm_opened_door;
+}
+
+enum sm_states delay_before_closing_door()
+{
+    VectorXf cmd, cmd_pwm;
+    cmd = amdc_s.controller_vs.collect(amdc_s.state, amdc_s.range);
+    cmd_pwm = amdc_s.controller_vs.u2pwm(cmd);
+
+    if (ros::Time::now() > timer)
+    {
         amdc_s.servo_cmd.open = false;
         amdc_s.servo_cmd.update = true;
         timer = ros::Time::now() + close_door_duration;
@@ -185,7 +207,7 @@ enum sm_states opened_door()
     amdc_s.propeller_cmd.left_spd = cmd_pwm(0);
     amdc_s.propeller_cmd.right_spd = cmd_pwm(1);
     amdc_s.propeller_cmd.update = true;
-    return sm_opened_door;
+    return sm_delay_before_closing_door;
 }
 
 enum sm_states closing_door()
