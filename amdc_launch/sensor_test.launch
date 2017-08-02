@@ -2,6 +2,7 @@
     <node pkg="amdc" type="custom_rosserial" name="serial_node" 
     args="/dev/ttyUSB0"
     output="screen"/>
+    <node pkg="amdc" type="visualisation.py" name="viz" />
 
     <include file="$(find amdc)/amdc_launch/target_gpscoord_2_map_odom.xml" />
     <include file="$(find amdc)/amdc_launch/static_transformation.xml" />
