@@ -10,6 +10,7 @@
 #include "sensor_msgs/Imu.h"
 #include "sensor_msgs/MagneticField.h"
 #include "sensor_msgs/NavSatFix.h"
+#include "std_msgs/Bool.h"
 #include "std_msgs/Int16.h"
 #include "std_msgs/Int16MultiArray.h"
 #include "std_msgs/Int32MultiArray.h"
@@ -340,5 +341,34 @@ void propeller_handler::process_sensor_msg(void *buffer)
 
   pub.publish(feedback_msg);
 }
+
+class servo_handler
+{
+  private:
+    ros::Subscriber sub;
+    ros::Publisher pub;
+
+  public:
+    bool open;
+    bool update;
+
+    servo_handler() :
+      open(false),
+      update(false)
+    {
+
+    }
+
+    void callback(const std_msgs::Bool::ConstPtr& msg)
+    {
+        open = msg->data;
+        update = true;
+    }
+
+    void subscribe(ros::NodeHandle nh)
+    {
+      sub = nh.subscribe("servo_cmd", 1, &servo_handler::callback, this);
+    }
+};
 
 #endif
