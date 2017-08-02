@@ -16,6 +16,7 @@ ultrasonic_handler ultrasonic[7];
 imu_handler imu; // pub: imu_data
 gps_handler gps; // pub: gps_data
 propeller_handler propeller; // pub: propeller_feedback
+servo_handler servo;
 
 void init_ultrasonic(ros::NodeHandle nh)
 {
@@ -42,6 +43,11 @@ void init_propeller(ros::NodeHandle nh)
     propeller.advertise(nh);
 }
 
+void init_servo(ros::NodeHandle nh)
+{
+    servo.subscribe(nh);
+}
+
 int checksum(uint8_t *buf, int sz)
 {
     int lrc = 0;
@@ -53,30 +59,32 @@ int checksum(uint8_t *buf, int sz)
     return lrc;
 }
 
-void send_propeller_command()
+void send_actuator_command()
 {
-    uint8_t buf[8];
+    uint8_t buf[11];
 
-    if (propeller.update == false)
-        return;
-
-    buf[0] = 'A';
+    buf[0] = 'A'; // header
     buf[1] = propeller.out_msg.left_pwm & 0xff;
     buf[2] = (propeller.out_msg.left_pwm >> 8) & 0xff;
     buf[3] = propeller.out_msg.right_pwm & 0xff;
     buf[4] = (propeller.out_msg.right_pwm >> 8) & 0xff;
     buf[5] = propeller.out_msg.left_enable;
     buf[6] = propeller.out_msg.right_enable;
+    buf[7] = propeller.update;
+    buf[8] = servo.open;
+    buf[9] = servo.update;
 
     // checksum
-    buf[7] = 0;
-    for (int i = 1; i <= 6; ++i)
+    buf[10] = 0;
+    for (int i = 1; i <= 9; ++i)
     {
-        buf[7] += buf[i];
+        buf[10] += buf[i];
     }
-    buf[7] = -buf[7];
+    buf[10] = -buf[10];
 
     serial_write(buf, sizeof buf);
+
+    servo.update = false;
     propeller.update = false;
 }
 
@@ -118,7 +126,12 @@ void process_serial_data(uint8_t *buf, int ctr)
                     int msg_sz = data_buf[0];
                     uint8_t *actual_data_buf = data_buf + 1;
 
-                    if (expected_lrc != received_lrc)
+                    if (expected_lrc == received_lrc + 3)
+                    {
+                        if (msg_sz == 19)
+                            imu.process_sensor_msg(actual_data_buf);
+                    }
+                    else if (expected_lrc != received_lrc)
                     {
                         ROS_DEBUG_STREAM("Bad checksum: " << received_lrc
                                 << ", expected: " << expected_lrc);
@@ -172,12 +185,13 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "custom_rosserial");
     ros::NodeHandle nh;
 
-    begin_serial(argv[1], 5); // timeout of 5s
+    begin_serial(argv[1], 1); // timeout of 1s
 
     init_ultrasonic(nh);
     init_imu(nh);
     init_gps(nh);
     init_propeller(nh);
+    init_servo(nh);
 
     uint8_t buf[8192];
     
@@ -189,18 +203,24 @@ int main(int argc, char **argv)
             ROS_WARN_STREAM("received " << recv
                     << " bytes. buffer getting full");
         }
+        else if (recv == 0)
+        {
+            ROS_WARN_STREAM("read from serial timeout");
+        }
         process_serial_data(buf, recv);
         ros::spinOnce();
-        send_propeller_command();
+        send_actuator_command();
     }
 
-    // stop propeller before shutdown
+    // stop propeller and close door before shutdown
     propeller.update = true;
     propeller.out_msg.left_pwm = 0;
     propeller.out_msg.right_pwm = 0;
     propeller.out_msg.left_enable = 0;
     propeller.out_msg.right_enable = 0;
-    send_propeller_command();
+    servo.update = true;
+    servo.open = false;
+    send_actuator_command();
 
     return 0;
 }

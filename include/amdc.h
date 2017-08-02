@@ -5,7 +5,12 @@
 #include <Eigen/Dense>
 #include <cmath>
 
+#include "geometry_msgs/PointStamped.h"
 #include <nav_msgs/Odometry.h>
+#include <geometry_msgs/Point.h>
+#include <sensor_msgs/Imu.h>
+#include "controller.h" 
+#include "kalman.h"
 
 struct PropellerCommand
 {
@@ -16,8 +21,7 @@ struct PropellerCommand
 
 struct ServoCommand
 {
-    int16_t left_angle;
-    int16_t right_angle;
+    bool open;
     bool update;
 };
 
@@ -26,17 +30,25 @@ class Amdc
 public:
     std::queue<Eigen::VectorXf> goals;
     Eigen::VectorXf state;
-    Eigen::VectorXf range;
+    Eigen::VectorXf range_raw, range; //raw and kf ultrasonic readings
     Eigen::VectorXf debris_coord;
+    controller::Controller controller_nav;
+    controller::Controller_VS controller_vs;
+    KF kf[7]; 
     PropellerCommand propeller_cmd;
     ServoCommand servo_cmd;
     bool remote_controlled;
 
-    Amdc()
+    Amdc():
+      propeller_cmd({0, 0, false}),
+      servo_cmd({false, false}),
+      remote_controlled(false)
     {
         state.resize(6);
         range.resize(7);
+        range_raw.resize(7);
         debris_coord.resize(2);
+        debris_coord << -1, -1;
     }
 
     void stateUpdateCallback(const nav_msgs::Odometry::ConstPtr& msg)
@@ -50,16 +62,46 @@ public:
         state(0) = msg -> pose.pose.position.x; // x
         state(1) = msg -> pose.pose.position.y; // y
         // rotation about z
-        float qx = msg -> pose.pose.orientation.x;
-        float qy = msg -> pose.pose.orientation.y;
-        float qz = msg -> pose.pose.orientation.z;
-        float qw = msg -> pose.pose.orientation.w;
-        state(2) = std::atan2(2 * (qw * qz + qx * qy), 
-                1 - 2 * (qy * qy + qz * qz));
+        // float qx = msg -> pose.pose.orientation.x;
+        // float qy = msg -> pose.pose.orientation.y;
+        // float qz = msg -> pose.pose.orientation.z;
+        // float qw = msg -> pose.pose.orientation.w;
+        //state(2) = std::atan2(2 * (qw * qz + qx * qy), 
+                //1 - 2 * (qy * qy + qz * qz));
         // ========== velocity: time derivative of position ============
         state(3) = msg -> twist.twist.linear.x; 
         state(4) = msg -> twist.twist.linear.y; 
         state(5) = msg -> twist.twist.angular.z; 
+    }
+
+    void visionCallback(const geometry_msgs::Point::ConstPtr& msg)
+    {
+        debris_coord(0) = msg->x;
+        debris_coord(1) = msg->y;
+    }
+
+    void imuMagFusedCallback(const sensor_msgs::Imu::ConstPtr& msg)
+    {
+        // We use the orientation from fused reading from IMU and magnetometer
+        // instead of the KF node.
+        float qx = msg -> orientation.x;
+        float qy = msg -> orientation.y;
+        float qz = msg -> orientation.z;
+        float qw = msg -> orientation.w;
+        state(2) = std::atan2(2 * (qw * qz + qx * qy), 
+                1 - 2 * (qy * qy + qz * qz));
+    }
+
+    /**
+     * Callback function that adds a new goal that was published on 
+     * /target_gps_odometry_odom.
+     * \param in   ROS PointStamped message
+     */
+    void goalCallback(const geometry_msgs::PointStamped::ConstPtr& msg)
+    {
+        Eigen::VectorXf goal(2);
+        goal << msg->point.x, msg->point.y;
+        goals.push(goal);
     }
 
 };

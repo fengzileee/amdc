@@ -3,6 +3,7 @@
 #include "ros/ros.h"
 #include "ros/console.h"
 #include "std_msgs/Bool.h"
+#include "sensor_msgs/Imu.h"
 
 #include "amdc.h"
 #include "amdc/PropellerCmd.h"
@@ -16,8 +17,13 @@ ultrasonic_handler ultrasonic[7];
 ros::Publisher propeller_pub;
 amdc::PropellerCmd propeller_msg;
 
+ros::Publisher servo_pub;
+std_msgs::Bool servo_msg;
+
 ros::Subscriber rc_cond;
 ros::Subscriber rc_cmd;
+
+ros::Subscriber vision_subscriber;
 
 void init_ultrasonic(ros::NodeHandle nh)
 {
@@ -45,25 +51,26 @@ void rc_propeller_cmd_callback(const amdc::PropellerCmd& msg)
 
 void init_remote_controller(ros::NodeHandle nh)
 {
-    rc_cond = nh.subscribe("remote_controlled", 1000, remote_controlled_callback);
-    rc_cmd = nh.subscribe("rc_propeller_cmd", 1000, rc_propeller_cmd_callback);
+    rc_cond = nh.subscribe("remote_controlled", 1, 
+            remote_controlled_callback);
+    rc_cmd = nh.subscribe("rc_propeller_cmd", 1, 
+            rc_propeller_cmd_callback);
 }
 
 void init_vision(ros::NodeHandle nh)
 {
-    // TODO
-    // add subscriber here
+    vision_subscriber = nh.subscribe("debris_coord", 1, 
+            &Amdc::visionCallback, &amdc_s);
 }
 
 void init_propeller(ros::NodeHandle nh)
 {
-    propeller_pub = nh.advertise<amdc::PropellerCmd>("propeller_cmd", 1000);
+    propeller_pub = nh.advertise<amdc::PropellerCmd>("propeller_cmd", 1);
 }
 
 void init_servo(ros::NodeHandle nh)
 {
-    // TODO
-    // add publisher here
+    servo_pub = nh.advertise<std_msgs::Bool>("servo_cmd", 1);
 }
 
 void update_actuators()
@@ -78,6 +85,12 @@ void update_actuators()
         propeller_pub.publish(propeller_msg);
         amdc_s.propeller_cmd.update = false;
     }
+
+    if (amdc_s.servo_cmd.update == true)
+    {
+        servo_msg.data = amdc_s.servo_cmd.open;
+        amdc_s.servo_cmd.update = false;
+    }
 }
 
 int main(int argc, char **argv)
@@ -85,12 +98,13 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "computer_node");
     ros::NodeHandle nh;
 
-    //XXX XXX
-    Eigen::VectorXf goal(2);
-    goal << 10, 0;
-    amdc_s.goals.push(goal);
+    // initialise amdc states
     amdc_s.state << 0,0,0,0,0,0;
     amdc_s.range << 6,6,6,6,6,6,6;
+
+    Eigen::VectorXf goal(2);
+    goal << 4,4;
+    amdc_s.goals.push(goal);
 
     // initialise all publisher and subscriber and sensor data
     init_ultrasonic(nh);
@@ -101,6 +115,12 @@ int main(int argc, char **argv)
 
     ros::Subscriber amdc_state_update_sub = nh.subscribe("odometry_gps", 
             1, &Amdc::stateUpdateCallback, &amdc_s);
+
+    ros::Subscriber amdc_goal_sub = nh.subscribe("target_gps_odometry_odom", 
+            1, &Amdc::goalCallback, &amdc_s);
+
+    ros::Subscriber imu_mag_fused_sub = nh.subscribe("imu_mag_fused", 
+            1, &Amdc::imuMagFusedCallback, &amdc_s);
 
     ros::Rate loop_rate(10);
     while (ros::ok())

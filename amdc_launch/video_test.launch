@@ -1,0 +1,11 @@
+<launch>
+    <node pkg="amdc" type="vision_node" name="vision_node" 
+        output="screen"
+        args="--cfg $(find amdc)/data/cnn_configuration_4class
+        --weights $(find amdc)/data/cnn_weights_4class
+        --visualise
+        --save
+        --saveraw"
+        />
+</launch>
+

@@ -1,0 +1,10 @@
+<launch>
+    <param name="use_sim_time" value="true"/>
+    <arg name="bag" default="sensors_bag.bag"/>
+    <node pkg="rosbag" type="play" name="playback" args="--clock $(arg bag)" />
+
+    <include file="$(find amdc)/amdc_launch/target_gpscoord_2_map_odom.xml" />
+    <include file="$(find amdc)/amdc_launch/static_transformation.xml" />
+    <include file="$(find amdc)/amdc_launch/robot.xml" />
+</launch>
+

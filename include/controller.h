@@ -279,7 +279,9 @@ namespace controller
                 else
                     omega_d = stay_gains.p * heading_err + stay_gains.d * dheading_err;
 
-                VectorXf u = vw2u(state, v_d, omega_d);
+                //VectorXf u = vw2u(state, v_d, omega_d);
+		VectorXf u(2);
+		u << 0, 0;
 
                 return u;
             }
@@ -351,19 +353,19 @@ namespace controller
             Controller(): 
                 PI(3.1415926535897931), 
                 ARRIVE_RANGE(0.5),
-                BOUNDARY_FOLLOWING_THRESH(4), 
+                BOUNDARY_FOLLOWING_THRESH(3), 
                 RUN_AWAY_THRESH(1.5), 
                 STATE_SWITCH_BUFFER(0.25), 
                 CLOSE_DIST(1), 
-                DIV_SPEED(0.1), OA_SPEED(0.2), 
-                NAV_SPEED(0.2), U_LIMIT(64), 
+                DIV_SPEED(0.2), OA_SPEED(0.4), 
+                NAV_SPEED(0.3), U_LIMIT(64), 
                 sensor_angles_array({2.2689, 1.2217, 0.5236, 0., -0.5236, -1.2217, -2.2689}),
-                sensor_cap(4.8), oa_gains({0.5,0.5}),
-                div_gains({0.25, 0.25}), 
-                stay_gains({0.5, 0.5}),
-                g2g_gains({0.5, 0.5}), 
+                sensor_cap(4.8), oa_gains({0.3,0.3}),
+                div_gains({0.15, 0.5}), 
+                stay_gains({0.3, 0.3}),
+                g2g_gains({0.15, 0.5}), 
                 par({100, 75, 1}), 
-                EMA_K(0.99),
+                EMA_K(0.9),
                 GOAL_P(0.25),
                 cstate(nav_state)
             {
@@ -437,18 +439,19 @@ namespace controller
                     u = run_away(state);
                 else if (cstate == nav_state)
                     u = go2goal(state, coord);
+		return u;
             }
 
             Controller_VS(): Controller()
             {
                 collect_point.resize(2); 
-                collect_point(0) = 0.5;
+                collect_point(0) = 0.33;
                 collect_point(1) = 0.5;
 
-                vsx_gains.p = 0.1;
-                vsx_gains.d = 0.1;
-                vsy_gains.p = 0.1;
-                vsy_gains.d = 0.1;
+                vsx_gains.p = 2;
+                vsx_gains.d = 1;
+                vsy_gains.p = 0.75;
+                vsy_gains.d = 0.5;
 
                 old_goal_vec.resize(2);
                 old_goal_vec(0) = 0;

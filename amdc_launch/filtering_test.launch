@@ -1,0 +1,21 @@
+<launch>
+    <include file="$(find amdc)/amdc_launch/localization.xml" />
+    <include file="$(find amdc)/amdc_launch/localization_gps.xml" />
+    <node pkg="rosbag" type="record" name="record_gps" 
+    args="-o sensors_bag
+             gps_data
+             imu_data
+             mag_data
+             imu_mag_fused
+             odometry_odom
+             odometry_gps
+             ultrasonic_btm_left
+             ultrasonic_left
+             ultrasonic_top_left
+             ultrasonic_top
+             ultrasonic_top_right
+             ultrasonic_right
+             ultrasonic_btm_right" />
+</launch>
+
+
