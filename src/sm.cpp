@@ -24,8 +24,8 @@ static const int NUM_OF_RANDOM_GOALS = 5;
 static const int SPREAD = 3;
 
 static ros::Time timer;
-static ros::Duration close_door_duration(1);
-static ros::Duration open_door_duration(1);
+static ros::Duration close_door_duration(1.5);
+static ros::Duration open_door_duration(1.5);
 
 enum sm_states 
 {
@@ -47,12 +47,15 @@ enum sm_states opening_door();
 enum sm_states opened_door();
 enum sm_states closing_door();
 
-enum sm_states (*sm_func[4])() =
+enum sm_states (*sm_func[7])() =
 {
     idle,
     go2goal,
     find_debris,
-    go2debris
+    go2debris,
+    opening_door,
+    opened_door,
+    closing_door
 };
 
 static enum sm_states state = sm_idle;
