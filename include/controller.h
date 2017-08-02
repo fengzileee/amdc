@@ -15,7 +15,8 @@ namespace controller
         stay_state = 0, 
         oa_state = 1, 
         div_state = 2, 
-        nav_state = 3
+        nav_state = 3,
+        collect_state = 4
     };
    
     struct gains
@@ -423,6 +424,30 @@ namespace controller
             }
 
         public:
+            VectorXf collect(VectorXf state, VectorXf point_sensor_readings)
+            {
+                VectorXf u(2); 
+
+                update_obstacle_perception(state, point_sensor_readings); 
+
+                if (operc.min < RUN_AWAY_THRESH - STATE_SWITCH_BUFFER)
+                    cstate = oa_state;
+                else if (operc.min >= RUN_AWAY_THRESH + STATE_SWITCH_BUFFER)
+                    cstate = collect_state;
+                cout << cstate << endl;
+
+                if (cstate == oa_state) 
+                    u = run_away(state);
+                else if (cstate == collect_state)
+                {
+                    u(0) = U_LIMIT/2;
+                    u(1) = U_LIMIT/2;
+                }
+
+                return u;
+
+            }
+
             VectorXf compute_u(VectorXf state, 
                     VectorXf coord, VectorXf point_sensor_readings)
             {
@@ -432,14 +457,15 @@ namespace controller
                 
                 if (operc.min < RUN_AWAY_THRESH - STATE_SWITCH_BUFFER)
                     cstate = oa_state;
-                else
+                else if (operc.min >= RUN_AWAY_THRESH + STATE_SWITCH_BUFFER)
                     cstate = nav_state;
 
                 if (cstate == oa_state)
                     u = run_away(state);
                 else if (cstate == nav_state)
                     u = go2goal(state, coord);
-		return u;
+
+                return u;
             }
 
             Controller_VS(): Controller()
