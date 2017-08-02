@@ -2,7 +2,7 @@
 #define debris_thresholds__H
 
 const float open_door_box_x1 = 0.25;
-const float open_door_box_y1 = 0.1;
+const float open_door_box_y1 = 0.0;
 const float open_door_box_x2 = 0.75;
 const float open_door_box_y2 = 0.5;
 const float open_door_box_w = open_door_box_x2 - open_door_box_x1;
