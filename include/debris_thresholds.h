@@ -22,7 +22,7 @@ const float stay_opened_box_y2 = 1.0;
 const float stay_opened_box_w = stay_opened_box_x2 - stay_opened_box_x1;
 const float stay_opened_box_h = stay_opened_box_y2 - stay_opened_box_y1;
 
-#define inside_box(x, y, x1, x2, y1, y2) \
+#define inside_box(x, y, x1, y1, x2, y2) \
 (x > x1 && x < x2 && y > y1 && y < y2)
 
 #define in_open_door_box(C)     \
