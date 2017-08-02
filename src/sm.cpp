@@ -130,9 +130,10 @@ enum sm_states go2debris()
     if (amdc_s.debris_coord(0) < 0)
         return find_debris();
 
-    // TODO
     if (in_open_door_box(amdc_s.debris_coord))
     {
+        amdc_s.servo_cmd.open = true;
+        amdc_s.servo_cmd.update = true;
         timer = ros::Time::now() + open_door_duration;
         return sm_opening_door;
     }
@@ -165,6 +166,8 @@ enum sm_states opened_door()
     if (in_close_door_box(amdc_s.debris_coord) ||
             !in_stay_opened_box(amdc_s.debris_coord))
     {
+        amdc_s.servo_cmd.open = false;
+        amdc_s.servo_cmd.update = true;
         timer = ros::Time::now() + close_door_duration;
         return sm_closing_door;
     }

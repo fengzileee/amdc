@@ -90,6 +90,9 @@ void update_actuators()
     {
         servo_msg.data = amdc_s.servo_cmd.open;
         amdc_s.servo_cmd.update = false;
+
+        servo_pub.publish(servo_msg);
+        amdc_s.servo_cmd.update = false;
     }
 }
 
