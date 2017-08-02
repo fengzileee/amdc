@@ -112,8 +112,11 @@ enum sm_states find_debris()
 
     update_propeller();
 
-    if (amdc_s.debris_coord(0) >= 0)
+    if (amdc_s.debris_coord(0) >= 0 &&
+        amdc_s.controller_nav.getCState() != oa_state)
+    {
         return sm_go2debris;
+    }
 
     dist = dist_between(amdc_s.state.head(2), amdc_s.goals.front());
     if (dist < dist_eps)
@@ -162,9 +165,16 @@ enum sm_states opening_door()
 
 enum sm_states opened_door()
 {
+    VectorXf cmd, cmd_pwm;
+    cmd = amdc_s.controller_vs.collect(amdc_s.state, amdc_s.range);
+    cmd_pwm = amdc_s.controller_vs.u2pwm(cmd);
+
+    bool decelerating = (cmd_pwm(0) + cmd_pwm(1)) < 0;
+
     // !in_stay_opened_box includes -1,-1 (i.e. no debris)
     if (in_close_door_box(amdc_s.debris_coord) ||
-            !in_stay_opened_box(amdc_s.debris_coord))
+            !in_stay_opened_box(amdc_s.debris_coord) ||
+            decelerating)
     {
         amdc_s.servo_cmd.open = false;
         amdc_s.servo_cmd.update = true;
@@ -172,19 +182,23 @@ enum sm_states opened_door()
         return sm_closing_door;
     }
 
-    amdc_s.propeller_cmd.left_spd = full_pwm;
-    amdc_s.propeller_cmd.right_spd = full_pwm;
+    amdc_s.propeller_cmd.left_spd = cmd_pwm(0);
+    amdc_s.propeller_cmd.right_spd = cmd_pwm(1);
     amdc_s.propeller_cmd.update = true;
     return sm_opened_door;
 }
 
 enum sm_states closing_door()
 {
+    VectorXf cmd, cmd_pwm;
+    cmd = amdc_s.controller_vs.collect(amdc_s.state, amdc_s.range);
+    cmd_pwm = amdc_s.controller_vs.u2pwm(cmd);
+
     if (ros::Time::now() > timer)
         return sm_find_debris;
 
-    amdc_s.propeller_cmd.left_spd = close_door_pwm;
-    amdc_s.propeller_cmd.right_spd = close_door_pwm;
+    amdc_s.propeller_cmd.left_spd = cmd_pwm(0);
+    amdc_s.propeller_cmd.right_spd = cmd_pwm(1);
     amdc_s.propeller_cmd.update = true;
     return sm_closing_door;
 }
